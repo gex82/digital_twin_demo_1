@@ -16,6 +16,7 @@ import { useUiStore, type UiStoreSnapshot } from './uiStore';
 
 const BUBBLE_POSITION_KEY = 'patterson-demo-bubble-position';
 const BUBBLE_PINNED_KEY = 'patterson-demo-bubble-pinned';
+const BUBBLE_MINIMIZED_KEY = 'patterson-demo-bubble-minimized';
 const DEFAULT_POSITION: DemoBubblePosition = { x: 36, y: 110 };
 
 function loadBubblePosition(): DemoBubblePosition {
@@ -40,6 +41,16 @@ function saveBubble(position: DemoBubblePosition, pinned: boolean): void {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(BUBBLE_POSITION_KEY, JSON.stringify(position));
   window.localStorage.setItem(BUBBLE_PINNED_KEY, pinned ? '1' : '0');
+}
+
+function loadBubbleMinimized(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(BUBBLE_MINIMIZED_KEY) === '1';
+}
+
+function saveBubbleMinimized(minimized: boolean): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(BUBBLE_MINIMIZED_KEY, minimized ? '1' : '0');
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number | undefined, actionType: string): Promise<T> {
@@ -88,6 +99,7 @@ interface DemoState {
 
   bubblePosition: DemoBubblePosition;
   bubblePinnedByUser: boolean;
+  isBubbleMinimized: boolean;
 
   pageReady: Record<string, boolean>;
   actionHandlersBySource: Record<string, Record<string, DemoActionHandler>>;
@@ -104,6 +116,7 @@ interface DemoState {
 
   setBubblePosition: (position: DemoBubblePosition, pinned?: boolean) => void;
   resetBubblePosition: () => void;
+  setBubbleMinimized: (minimized: boolean) => void;
 
   registerPageReady: (route: string, ready: boolean) => void;
   registerActionHandlers: (source: string, handlers: Record<string, DemoActionHandler>) => void;
@@ -145,6 +158,7 @@ export const useDemoStore = create<DemoState>((set, get) => ({
 
   bubblePosition: loadBubblePosition(),
   bubblePinnedByUser: loadBubblePinned(),
+  isBubbleMinimized: loadBubbleMinimized(),
 
   pageReady: {},
   actionHandlersBySource: {},
@@ -159,6 +173,7 @@ export const useDemoStore = create<DemoState>((set, get) => ({
     useAiStore.getState().resetDemoState();
     useUiStore.getState().resetDemoUiState();
     useUiStore.getState().addDecisionTrail('S01', 'Demo started and environment initialized.');
+    saveBubbleMinimized(false);
 
     set((state) => ({
       isActive: true,
@@ -174,6 +189,7 @@ export const useDemoStore = create<DemoState>((set, get) => ({
         ai: aiSnapshot,
         ui: uiSnapshot,
       },
+      isBubbleMinimized: false,
     }));
   },
 
@@ -190,6 +206,7 @@ export const useDemoStore = create<DemoState>((set, get) => ({
     useAiStore.getState().resetDemoState();
     useUiStore.getState().resetDemoUiState();
     useUiStore.getState().addDecisionTrail('S01', 'Demo restarted from clean state.');
+    saveBubbleMinimized(false);
 
     set((state) => ({
       isActive: true,
@@ -200,6 +217,7 @@ export const useDemoStore = create<DemoState>((set, get) => ({
       isActionRunning: false,
       actionError: null,
       statusNote: '',
+      isBubbleMinimized: false,
     }));
   },
 
@@ -304,6 +322,11 @@ export const useDemoStore = create<DemoState>((set, get) => ({
   resetBubblePosition: () => {
     saveBubble(DEFAULT_POSITION, false);
     set({ bubblePosition: DEFAULT_POSITION, bubblePinnedByUser: false });
+  },
+
+  setBubbleMinimized: (minimized) => {
+    saveBubbleMinimized(minimized);
+    set({ isBubbleMinimized: minimized });
   },
 
   registerPageReady: (route, ready) => {
@@ -419,6 +442,53 @@ function getBuiltInActionHandler(actionType: string): DemoActionHandler | null {
     case 'UI_DISABLE_MASKING':
       return () => {
         useUiStore.getState().setMaskSensitiveCosts(false);
+      };
+    case 'DECISION_INIT_FROM_BEST_SCENARIO':
+      return () => {
+        const bestScenario = useScenarioStore
+          .getState()
+          .scenarios.filter((scenario) => scenario.result)
+          .sort((a, b) => (b.result?.annualSavingsUSD ?? 0) - (a.result?.annualSavingsUSD ?? 0))[0];
+        if (!bestScenario) return;
+        useScenarioStore.getState().setActiveScenario(bestScenario.id);
+        useUiStore.getState().initializeDecisionWorkflow(bestScenario.id, bestScenario.name);
+      };
+    case 'DECISION_APPROVE_CHAIN':
+      return () => {
+        const ui = useUiStore.getState();
+        const scenarioId = ui.decisionWorkflow.scenarioId;
+        if (!scenarioId) return;
+
+        const approvals: Array<{ stage: 'analyst' | 'director' | 'vp'; user: string; label: string }> = [
+          { stage: 'analyst', user: 'A. Kowalski', label: 'Analyst Review' },
+          { stage: 'director', user: 'R. Chen', label: 'Director Approval' },
+          { stage: 'vp', user: 'J. Mitchell', label: 'VP Sign-Off' },
+        ];
+
+        for (const approval of approvals) {
+          useUiStore.getState().approveDecisionStage(approval.stage, approval.user);
+          useScenarioStore.getState().appendScenarioAuditEntry(scenarioId, {
+            user: approval.user,
+            action: approval.label,
+            details: `${approval.label} completed in Decision Cockpit guided flow.`,
+          });
+        }
+      };
+    case 'DECISION_GENERATE_BOARD_PACK':
+      return () => {
+        const ui = useUiStore.getState();
+        const workflow = ui.decisionWorkflow;
+        const scenarioId = workflow.scenarioId;
+        const scenarioName = workflow.scenarioName || 'scenario-pack';
+        const artifact = `${scenarioName.replace(/\s+/g, '-').toLowerCase()}-board-pack-${new Date().toISOString().slice(0, 10)}.pdf`;
+        useUiStore.getState().markDecisionExport(artifact);
+        if (scenarioId) {
+          useScenarioStore.getState().appendScenarioAuditEntry(scenarioId, {
+            user: 'System',
+            action: 'Board Pack Exported',
+            details: `Generated artifact ${artifact}`,
+          });
+        }
       };
     default:
       return null;

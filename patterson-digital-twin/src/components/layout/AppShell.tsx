@@ -11,6 +11,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/app/cost-to-serve': { title: 'Cost-to-Serve Analysis', subtitle: 'Lane · customer · order-level cost decomposition' },
   '/app/service-level': { title: 'Service Level & OTIF', subtitle: 'On-Time In-Full performance · delivery windows · coverage analysis' },
   '/app/reports': { title: 'Reports & Scenario Packs', subtitle: 'Exportable scenario summaries and executive briefing packs' },
+  '/app/decision-cockpit': { title: 'Decision Cockpit', subtitle: 'Approval workflow · implementation tracker · executive closure' },
 };
 
 export function AppShell() {

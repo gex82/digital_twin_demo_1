@@ -5,6 +5,8 @@ export type RoleLens = 'Executive' | 'Analyst' | 'Mixed';
 type ConnectorStatus = 'Healthy' | 'Degraded' | 'Offline';
 export type ToastTone = 'info' | 'success' | 'warning' | 'error';
 type IncidentSeverity = 'low' | 'medium' | 'high';
+export type DecisionApprovalStageId = 'analyst' | 'director' | 'vp';
+type DecisionApprovalStatus = 'pending' | 'approved';
 
 export interface IntegrationSourceStatus {
   id: string;
@@ -40,6 +42,22 @@ export interface AppToast {
   createdAt: string;
 }
 
+export interface DecisionApprovalStage {
+  id: DecisionApprovalStageId;
+  label: string;
+  status: DecisionApprovalStatus;
+  approvedBy?: string;
+  approvedAt?: string;
+}
+
+export interface DecisionWorkflowState {
+  scenarioId: string | null;
+  scenarioName: string;
+  stages: DecisionApprovalStage[];
+  exportArtifact: string | null;
+  lastExportAt: string | null;
+}
+
 export interface UiStoreSnapshot {
   sidebarCollapsed: boolean;
   activePage: string;
@@ -51,6 +69,7 @@ export interface UiStoreSnapshot {
   integrationSources: IntegrationSourceStatus[];
   integrationIncidents: IntegrationIncident[];
   integrationRefreshCounter: number;
+  decisionWorkflow: DecisionWorkflowState;
   decisionTrail: UiDecisionTrailEntry[];
 }
 
@@ -66,6 +85,7 @@ interface UiState {
   integrationIncidents: IntegrationIncident[];
   integrationRefreshCounter: number;
   isIntegrationRefreshing: boolean;
+  decisionWorkflow: DecisionWorkflowState;
   toasts: AppToast[];
   decisionTrail: UiDecisionTrailEntry[];
 
@@ -79,6 +99,10 @@ interface UiState {
   setMaskSensitiveCosts: (masked: boolean) => void;
   simulateIntegrationRefresh: () => void;
   acknowledgeIncident: (id: string) => void;
+  initializeDecisionWorkflow: (scenarioId: string | null, scenarioName: string) => void;
+  approveDecisionStage: (stageId: DecisionApprovalStageId, approver: string) => void;
+  markDecisionExport: (artifactName: string) => void;
+  resetDecisionWorkflow: () => void;
   pushToast: (toast: { title: string; message: string; tone?: ToastTone }) => string;
   dismissToast: (id: string) => void;
   clearToasts: () => void;
@@ -132,6 +156,28 @@ function pushToastWithLimit(toasts: AppToast[], toast: AppToast): AppToast[] {
   return [...toasts.slice(-4), toast];
 }
 
+function initialDecisionWorkflow(): DecisionWorkflowState {
+  return {
+    scenarioId: null,
+    scenarioName: 'No scenario selected',
+    stages: [
+      { id: 'analyst', label: 'Analyst Review', status: 'pending' },
+      { id: 'director', label: 'Director Approval', status: 'pending' },
+      { id: 'vp', label: 'VP Sign-Off', status: 'pending' },
+    ],
+    exportArtifact: null,
+    lastExportAt: null,
+  };
+}
+
+function canApproveStage(workflow: DecisionWorkflowState, stageId: DecisionApprovalStageId): boolean {
+  if (stageId === 'analyst') return true;
+  if (stageId === 'director') {
+    return workflow.stages.find((stage) => stage.id === 'analyst')?.status === 'approved';
+  }
+  return workflow.stages.find((stage) => stage.id === 'director')?.status === 'approved';
+}
+
 export const useUiStore = create<UiState>((set, get) => ({
   sidebarCollapsed: false,
   activePage: 'dashboard',
@@ -144,6 +190,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   integrationIncidents: deepClone(INITIAL_INCIDENTS),
   integrationRefreshCounter: 0,
   isIntegrationRefreshing: false,
+  decisionWorkflow: initialDecisionWorkflow(),
   toasts: [],
   decisionTrail: [],
 
@@ -246,6 +293,51 @@ export const useUiStore = create<UiState>((set, get) => ({
     }));
   },
 
+  initializeDecisionWorkflow: (scenarioId, scenarioName) => {
+    set({
+      decisionWorkflow: {
+        ...initialDecisionWorkflow(),
+        scenarioId,
+        scenarioName,
+      },
+    });
+  },
+
+  approveDecisionStage: (stageId, approver) => {
+    set((state) => {
+      if (!canApproveStage(state.decisionWorkflow, stageId)) return {};
+
+      const nextStages = state.decisionWorkflow.stages.map((stage) =>
+        stage.id === stageId
+          ? {
+              ...stage,
+              status: 'approved' as const,
+              approvedBy: approver,
+              approvedAt: new Date().toISOString(),
+            }
+          : stage
+      );
+      return {
+        decisionWorkflow: {
+          ...state.decisionWorkflow,
+          stages: nextStages,
+        },
+      };
+    });
+  },
+
+  markDecisionExport: (artifactName) => {
+    set((state) => ({
+      decisionWorkflow: {
+        ...state.decisionWorkflow,
+        exportArtifact: artifactName,
+        lastExportAt: new Date().toISOString(),
+      },
+    }));
+  },
+
+  resetDecisionWorkflow: () => set({ decisionWorkflow: initialDecisionWorkflow() }),
+
   pushToast: (input) => {
     const toast = makeToast(input);
     set((state) => ({
@@ -291,6 +383,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       integrationIncidents: deepClone(INITIAL_INCIDENTS),
       integrationRefreshCounter: 0,
       isIntegrationRefreshing: false,
+      decisionWorkflow: initialDecisionWorkflow(),
       toasts: [],
       decisionTrail: [],
     });
@@ -309,6 +402,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       integrationSources: deepClone(state.integrationSources),
       integrationIncidents: deepClone(state.integrationIncidents),
       integrationRefreshCounter: state.integrationRefreshCounter,
+      decisionWorkflow: deepClone(state.decisionWorkflow),
       decisionTrail: deepClone(state.decisionTrail),
     };
   },
@@ -326,6 +420,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       integrationIncidents: deepClone(snapshot.integrationIncidents),
       integrationRefreshCounter: snapshot.integrationRefreshCounter,
       isIntegrationRefreshing: false,
+      decisionWorkflow: deepClone(snapshot.decisionWorkflow),
       toasts: [],
       decisionTrail: deepClone(snapshot.decisionTrail),
     });

@@ -11,6 +11,7 @@ import AiInsightEngine from './pages/ai-engine/AiInsightEngine';
 import CostToServe from './pages/cost-to-serve/CostToServe';
 import ServiceLevel from './pages/service-level/ServiceLevel';
 import Reports from './pages/reports/Reports';
+import DecisionCockpit from './pages/decision-cockpit/DecisionCockpit';
 import { DemoOverlay } from './components/demo/DemoOverlay';
 import { ToastStack } from './components/ui/ToastStack';
 
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="cost-to-serve" element={<CostToServe />} />
           <Route path="service-level" element={<ServiceLevel />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="decision-cockpit" element={<DecisionCockpit />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

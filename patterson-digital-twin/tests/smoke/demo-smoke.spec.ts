@@ -47,6 +47,7 @@ test('authenticated route smoke across all primary pages', async ({ page }) => {
     { href: '/app/cost-to-serve', route: /\/app\/cost-to-serve$/ },
     { href: '/app/service-level', route: /\/app\/service-level$/ },
     { href: '/app/reports', route: /\/app\/reports$/ },
+    { href: '/app/decision-cockpit', route: /\/app\/decision-cockpit$/ },
     { href: '/app/dashboard', route: /\/app\/dashboard$/ },
   ];
 
@@ -75,7 +76,7 @@ test('guided start demo flow advances through all 11 stages', async ({ page }) =
     { stage: 8, route: /\/app\/service-level$/ },
     { stage: 9, route: /\/app\/ai$/ },
     { stage: 10, route: /\/app\/reports$/ },
-    { stage: 11, route: /\/app\/dashboard$/ },
+    { stage: 11, route: /\/app\/decision-cockpit$/ },
   ];
 
   for (const step of stageRouteExpectations) {
@@ -114,4 +115,21 @@ test('guided demo Back moves to the prior stage and route', async ({ page }) => 
   await expectStage(page, 3);
   await expect(page).toHaveURL(/\/app\/dashboard$/);
   await waitForBubbleReady(page);
+});
+
+test('decision cockpit approval chain and board pack export', async ({ page }) => {
+  await login(page);
+  await page.locator('a[href="/app/decision-cockpit"]').first().click();
+  await expect(page).toHaveURL(/\/app\/decision-cockpit$/);
+  await expect(page.locator('[data-demo-anchor="demo-cockpit-summary"]')).toBeVisible();
+
+  const approvalStages = ['analyst', 'director', 'vp'] as const;
+  for (const stage of approvalStages) {
+    const row = page.locator(`[data-demo-anchor="demo-cockpit-approval-${stage}"]`);
+    await row.getByRole('button', { name: 'Approve' }).click();
+    await expect(row).toContainText('Approved');
+  }
+
+  await page.getByRole('button', { name: /Generate Board Pack/ }).click();
+  await expect(page.locator('[data-demo-anchor="demo-cockpit-export"]')).toContainText('board-pack');
 });

@@ -219,6 +219,7 @@ interface ScenarioState {
   duplicateScenario: (id: string) => string;
   approveScenario: (id: string) => void;
   lockScenario: (id: string) => void;
+  appendScenarioAuditEntry: (id: string, entry: { user: string; action: string; details: string }) => void;
   resetScenariosToSeed: () => void;
   getSnapshot: () => ScenarioStoreSnapshot;
   restoreSnapshot: (snapshot: ScenarioStoreSnapshot) => void;
@@ -457,6 +458,27 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
                   user: 'K. Barry',
                   action: 'Locked',
                   details: 'Scenario locked for governance traceability',
+                },
+              ],
+            }
+          : scenario
+      ),
+    });
+  },
+
+  appendScenarioAuditEntry: (id, entry) => {
+    set({
+      scenarios: get().scenarios.map((scenario) =>
+        scenario.id === id
+          ? {
+              ...scenario,
+              auditLog: [
+                ...scenario.auditLog,
+                {
+                  timestamp: new Date().toISOString(),
+                  user: entry.user,
+                  action: entry.action,
+                  details: entry.details,
                 },
               ],
             }

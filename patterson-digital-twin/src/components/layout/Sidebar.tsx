@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Network, FlaskConical, Brain,
   DollarSign, Target, FileText, ChevronLeft, ChevronRight,
-  Activity, Settings, HelpCircle
+  Activity, Settings, HelpCircle, ClipboardCheck
 } from 'lucide-react';
 import { useUiStore } from '../../store/uiStore';
 import { BRAND } from '../../utils/constants';
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { path: '/app/cost-to-serve', icon: DollarSign, label: 'Cost-to-Serve', badge: null },
   { path: '/app/service-level', icon: Target, label: 'Service Level & OTIF', badge: null },
   { path: '/app/reports', icon: FileText, label: 'Reports', badge: null },
+  { path: '/app/decision-cockpit', icon: ClipboardCheck, label: 'Decision Cockpit', badge: null },
 ];
 
 export function Sidebar() {

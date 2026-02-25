@@ -25,12 +25,20 @@ export interface DemoAction {
   blocking?: boolean;
 }
 
+export type DemoPersona = 'Executive' | 'Analyst' | 'Mixed';
+
+export interface DemoPersonaCopy {
+  summary: string;
+  detail: string;
+}
+
 export interface DemoStage {
   id: DemoStageId;
   route: string;
   title: string;
   summary: string;
   detail: string;
+  personaCopy?: Partial<Record<DemoPersona, DemoPersonaCopy>>;
   anchorId?: string;
   defaultBubblePosition?: DemoBubblePosition;
   enterActions?: DemoAction[];

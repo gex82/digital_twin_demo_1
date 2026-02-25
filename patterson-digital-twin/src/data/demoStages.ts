@@ -7,6 +7,16 @@ export const DEMO_STAGES: DemoStage[] = [
     title: 'Welcome',
     summary: "We'll walk through how a network decision gets made end to end.",
     detail: 'You will see current-state risk, scenario simulation, AI guidance, and an executive-ready decision pack.',
+    personaCopy: {
+      Executive: {
+        summary: 'We will move from baseline risk to a signed decision in one guided flow.',
+        detail: 'You will see savings, service impact, governance checks, and final approval closure.',
+      },
+      Analyst: {
+        summary: 'We will execute a deterministic decision script across core modules.',
+        detail: 'Each step logs assumptions, constraints, and actions for replay and audit.',
+      },
+    },
     anchorId: 'demo-landing-start',
     defaultBubblePosition: { x: 40, y: 120 },
     enterActions: [{ type: 'DEMO_BOOTSTRAP' }],
@@ -28,6 +38,16 @@ export const DEMO_STAGES: DemoStage[] = [
     title: 'Network Health',
     summary: 'This is the current network health: cost, service, and risk in one view.',
     detail: 'We start from the baseline before changing anything.',
+    personaCopy: {
+      Executive: {
+        summary: 'This is the baseline business posture before approving any change.',
+        detail: 'Focus on cost-to-serve, OTIF, and where risk is concentrated now.',
+      },
+      Analyst: {
+        summary: 'This baseline merges cost, service, utilization, and connector telemetry.',
+        detail: 'All later scenario deltas are measured from this snapshot.',
+      },
+    },
     anchorId: 'demo-dashboard-kpi-grid',
     defaultBubblePosition: { x: 24, y: 110 },
     enterActions: [
@@ -55,6 +75,16 @@ export const DEMO_STAGES: DemoStage[] = [
     title: 'Build Scenario',
     summary: 'Now we create a what-if scenario with explicit assumptions.',
     detail: 'This stage sets up a consolidation case with controlled assumptions.',
+    personaCopy: {
+      Executive: {
+        summary: 'We create a decision candidate with explicit assumptions.',
+        detail: 'Assumptions remain transparent before any recommendation is approved.',
+      },
+      Analyst: {
+        summary: 'We seed a parameterized scenario template for deterministic replay.',
+        detail: 'Assumption values are logged to support governance and versioning.',
+      },
+    },
     anchorId: 'demo-scenario-list',
     defaultBubblePosition: { x: 24, y: 120 },
     enterActions: [
@@ -68,6 +98,16 @@ export const DEMO_STAGES: DemoStage[] = [
     title: 'Run Simulation',
     summary: 'The engine returns cost and service tradeoffs in minutes.',
     detail: 'Results include annual savings, OTIF impact, risk level, and payback.',
+    personaCopy: {
+      Executive: {
+        summary: 'The model returns quantified tradeoffs fast enough for decision cadence.',
+        detail: 'You get savings, service impact, payback, and execution risk in one view.',
+      },
+      Analyst: {
+        summary: 'Optimization computes deltas against baseline assumptions.',
+        detail: 'Outputs include savings, OTIF movement, uncertainty drivers, and risk class.',
+      },
+    },
     anchorId: 'demo-scenario-results',
     defaultBubblePosition: { x: 24, y: 120 },
     enterActions: [{ type: 'SCENARIO_RUN_ACTIVE_AND_WAIT', timeoutMs: 12000 }],
@@ -104,6 +144,16 @@ export const DEMO_STAGES: DemoStage[] = [
     title: 'AI Recommendation',
     summary: 'AI summarizes options and recommends the best next move.',
     detail: 'We pin the strongest recommendation and pass it into the workflow.',
+    personaCopy: {
+      Executive: {
+        summary: 'AI distills options into a direct recommendation with expected impact.',
+        detail: 'The recommendation is pinned and handed into the decision packet.',
+      },
+      Analyst: {
+        summary: 'AI composes recommendations from scenario and service context.',
+        detail: 'Pinned output is converted into downstream scenario and report artifacts.',
+      },
+    },
     anchorId: 'demo-ai-chat',
     defaultBubblePosition: { x: 24, y: 120 },
     enterActions: [
@@ -123,6 +173,16 @@ export const DEMO_STAGES: DemoStage[] = [
     title: 'Decision Pack',
     summary: 'We package results into an executive-ready decision brief.',
     detail: 'The scenario pack is selected and an export artifact is generated.',
+    personaCopy: {
+      Executive: {
+        summary: 'Results are packaged into a board-ready decision brief.',
+        detail: 'The pack combines financial impact, service deltas, and recommendation rationale.',
+      },
+      Analyst: {
+        summary: 'Report generation assembles KPI, scenario, and governance sections.',
+        detail: 'Export artifact is generated with scenario-linked evidence for review.',
+      },
+    },
     anchorId: 'demo-reports-preview',
     defaultBubblePosition: { x: 24, y: 120 },
     enterActions: [
@@ -132,14 +192,26 @@ export const DEMO_STAGES: DemoStage[] = [
   },
   {
     id: 'S11',
-    route: '/app/dashboard',
-    title: 'Executive Close',
+    route: '/app/decision-cockpit',
+    title: 'Decision Cockpit',
     summary: 'Final step: approve, track impact, and keep an auditable record.',
-    detail: 'We return to the dashboard with a clear before/after recap.',
-    anchorId: 'demo-dashboard-decision-card',
+    detail: 'We finalize the recommendation through analyst, director, and VP approvals.',
+    personaCopy: {
+      Executive: {
+        summary: 'Final step: move from recommendation to signed decision.',
+        detail: 'Approval chain, impact recap, and board export close the decision loop.',
+      },
+      Analyst: {
+        summary: 'Final step: execute governance workflow and preserve traceability.',
+        detail: 'Approval stages and export events are written back to scenario audit history.',
+      },
+    },
+    anchorId: 'demo-cockpit-summary',
     defaultBubblePosition: { x: 24, y: 120 },
     enterActions: [
-      { type: 'DASHBOARD_SHOW_DECISION_RECAP' },
+      { type: 'DECISION_INIT_FROM_BEST_SCENARIO' },
+      { type: 'DECISION_APPROVE_CHAIN' },
+      { type: 'DECISION_GENERATE_BOARD_PACK' },
       { type: 'UI_SET_ROLE_MIXED' },
     ],
   },

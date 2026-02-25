@@ -9,6 +9,7 @@ import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
 import { AppButton } from '../../components/ui/AppButton';
 import { SkeletonBlock } from '../../components/ui/SkeletonBlock';
 import { useUiStore } from '../../store/uiStore';
+import { useNavigate } from 'react-router-dom';
 
 const BLUE = '#006EFF';
 const TEAL = '#00C2A8';
@@ -48,7 +49,9 @@ function getScenarioCapexUSD(
 }
 
 export default function Reports() {
-  const { scenarios } = useScenarioStore();
+  const navigate = useNavigate();
+  const scenarios = useScenarioStore((state) => state.scenarios);
+  const appendScenarioAuditEntry = useScenarioStore((state) => state.appendScenarioAuditEntry);
   const [selectedReport, setSelectedReport] = useState<string>('exec-summary');
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
   const [copyMsg, setCopyMsg] = useState('');
@@ -56,6 +59,8 @@ export default function Reports() {
   const [artifactMsg, setArtifactMsg] = useState('');
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const pushToast = useUiStore((state) => state.pushToast);
+  const initializeDecisionWorkflow = useUiStore((state) => state.initializeDecisionWorkflow);
+  const markDecisionExport = useUiStore((state) => state.markDecisionExport);
 
   const completeScenarios = scenarios.filter(s => s.result);
 
@@ -85,10 +90,23 @@ export default function Reports() {
   function selectScenarioPack(scenarioId: string) {
     setSelectedScenarioId(scenarioId);
     setSelectedReport('scenario');
+    const scenario = scenarios.find((item) => item.id === scenarioId);
+    if (scenario) {
+      initializeDecisionWorkflow(scenario.id, scenario.name);
+    }
   }
 
-  function generatePackArtifact(scenarioName: string) {
-    setArtifactMsg(`Generated pack artifact: ${scenarioName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`);
+  function generatePackArtifact(scenarioName: string, scenarioId?: string) {
+    const artifact = `${scenarioName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`;
+    setArtifactMsg(`Generated pack artifact: ${artifact}`);
+    markDecisionExport(artifact);
+    if (scenarioId) {
+      appendScenarioAuditEntry(scenarioId, {
+        user: 'System',
+        action: 'Decision Pack Generated',
+        details: `Generated report artifact ${artifact}`,
+      });
+    }
     pushToast({
       title: 'Scenario Pack Generated',
       message: `${scenarioName} pack exported and staged for executive review.`,
@@ -110,9 +128,10 @@ export default function Reports() {
         ? scenarios.find((scenario) => scenario.id === selectedScenarioId)
         : scenarios.find((scenario) => scenario.result);
       if (!active) return;
-      generatePackArtifact(active.name);
+      initializeDecisionWorkflow(active.id, active.name);
+      generatePackArtifact(active.name, active.id);
     },
-  }), [scenarios, selectedScenarioId]));
+  }), [initializeDecisionWorkflow, scenarios, selectedScenarioId]));
 
   function downloadJson() {
     const data = activeScenario ?? { kpis: NETWORK_KPIS, generatedAt: new Date().toISOString() };
@@ -181,7 +200,7 @@ export default function Reports() {
                   onClick={e => {
                     e.stopPropagation();
                     selectScenarioPack(s.id);
-                    generatePackArtifact(s.name);
+                    generatePackArtifact(s.name, s.id);
                   }}
                   style={{ fontSize: 10, color: BLUE, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                 >
@@ -251,6 +270,9 @@ export default function Reports() {
             </AppButton>
             <AppButton onClick={() => window.print()} variant="primary" size="sm" style={{ fontSize: 11 }}>
               <Printer size={12} /> Print
+            </AppButton>
+            <AppButton onClick={() => navigate('/app/decision-cockpit')} variant="warning" size="sm" style={{ fontSize: 11 }}>
+              Decision Cockpit
             </AppButton>
           </div>
         </div>
