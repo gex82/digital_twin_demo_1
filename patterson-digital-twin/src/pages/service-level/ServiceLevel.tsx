@@ -8,6 +8,7 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { useScenarioStore } from '../../store/scenarioStore';
 import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
 import { useShallow } from 'zustand/react/shallow';
+import { useUiStore } from '../../store/uiStore';
 
 const BLUE = '#006EFF';
 const BORDER = '#2e4168';
@@ -73,6 +74,7 @@ export default function ServiceLevel() {
       setActiveScenario: state.setActiveScenario,
     }))
   );
+  const pushToast = useUiStore((state) => state.pushToast);
 
   const TOP_KPIS = [
     { label: 'Network OTIF', value: '97.2%', color: GREEN, delta: '+0.4pp YoY' },
@@ -84,6 +86,11 @@ export default function ServiceLevel() {
   function requestSbr(carrier: string) {
     setSbrRequestedCarrier(carrier);
     setSbrMessage(`SBR request submitted for ${carrier}. Procurement and carrier ops notified.`);
+    pushToast({
+      title: 'SBR Request Submitted',
+      message: `${carrier} performance review has been routed to procurement and carrier ops.`,
+      tone: 'warning',
+    });
     window.setTimeout(() => setSbrMessage(''), 2600);
   }
 
@@ -96,6 +103,11 @@ export default function ServiceLevel() {
       createdBy: 'Service Ops',
     });
     setActiveScenario(scenarioId);
+    pushToast({
+      title: 'Coverage Scenario Drafted',
+      message: `${region} service-level scenario created for simulation.`,
+      tone: 'info',
+    });
   }
 
   useDemoStageBindings('/app/service-level', useMemo(() => ({

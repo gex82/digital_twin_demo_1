@@ -12,6 +12,7 @@ import CostToServe from './pages/cost-to-serve/CostToServe';
 import ServiceLevel from './pages/service-level/ServiceLevel';
 import Reports from './pages/reports/Reports';
 import { DemoOverlay } from './components/demo/DemoOverlay';
+import { ToastStack } from './components/ui/ToastStack';
 
 function AuthGuard({ children }: { children: ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <DemoOverlay />
+      <ToastStack />
     </BrowserRouter>
   );
 }

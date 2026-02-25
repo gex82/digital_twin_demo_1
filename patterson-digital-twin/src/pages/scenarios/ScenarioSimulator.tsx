@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Play, Plus, Copy, CheckCircle, Lock, ChevronRight, ChevronLeft,
   Sliders, Building2, BarChart2, Clock, DollarSign, TrendingUp,
-  AlertTriangle, X, Check, Loader2
+  AlertTriangle, X, Check, Loader2, NotebookText
 } from 'lucide-react';
 import { useScenarioStore } from '../../store/scenarioStore';
 import { PRIMARY_FACILITIES } from '../../data/facilities';
@@ -11,8 +11,10 @@ import { formatCurrency } from '../../utils/formatters';
 import { StatusPill } from '../../components/ui/StatusPill';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { ScenarioCompareChart } from '../../components/charts/ScenarioCompareChart';
-import type { ScenarioType } from '../../types';
+import type { Scenario, ScenarioParameter, ScenarioType } from '../../types';
 import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
+import { useUiStore } from '../../store/uiStore';
+import { AppButton } from '../../components/ui/AppButton';
 
 const SURFACE = '#1a2840';
 const SURFACE2 = '#1e2f4a';
@@ -45,6 +47,7 @@ export default function ScenarioSimulator() {
 
   const [filter, setFilter] = useState<FilterTab>('All');
   const [showBuilder, setShowBuilder] = useState(false);
+  const [showAssumptionsLog, setShowAssumptionsLog] = useState(false);
   const [builderStep, setBuilderStep] = useState(1);
   const [compareMode, setCompareMode] = useState(false);
   const [newScenario, setNewScenario] = useState<{
@@ -61,12 +64,27 @@ export default function ScenarioSimulator() {
     horizon: 24,
   });
   const logRef = useRef<HTMLDivElement>(null);
+  const lastCompletedRunKey = useRef<string>('');
+  const pushToast = useUiStore((state) => state.pushToast);
 
   useEffect(() => {
     if (logRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
   }, [simulationLog]);
+
+  useEffect(() => {
+    const activeScenario = scenarios.find((scenario) => scenario.id === activeScenarioId);
+    if (!activeScenario || isSimulating || activeScenario.status !== 'Complete' || !activeScenario.result) return;
+    const runKey = `${activeScenario.id}-${activeScenario.runDurationMs ?? 0}`;
+    if (runKey === lastCompletedRunKey.current) return;
+    lastCompletedRunKey.current = runKey;
+    pushToast({
+      title: 'Scenario Run Complete',
+      message: `${activeScenario.name} finished in ${(activeScenario.runDurationMs ?? 0).toLocaleString()}ms.`,
+      tone: 'success',
+    });
+  }, [activeScenarioId, isSimulating, pushToast, scenarios]);
 
   const filtered = scenarios.filter(s => {
     if (filter === 'All') return true;
@@ -117,7 +135,13 @@ export default function ScenarioSimulator() {
       parameters: [],
     });
     setActiveScenario(id);
+    pushToast({
+      title: 'Scenario Draft Created',
+      message: `Initialized ${newScenario.name || SCENARIO_TYPE_LABELS[newScenario.type]} with editable assumptions.`,
+      tone: 'info',
+    });
     setShowBuilder(false);
+    setShowAssumptionsLog(true);
     setBuilderStep(1);
     setNewScenario({ type: 'FCConsolidation', name: '', facilities: [], params: {}, horizon: 24 });
   }
@@ -305,6 +329,10 @@ export default function ScenarioSimulator() {
                     <Lock size={14} /> Lock
                   </button>
                 )}
+                <AppButton variant="secondary" onClick={() => setShowAssumptionsLog(true)}>
+                  <NotebookText size={14} />
+                  Assumptions Log
+                </AppButton>
                 <button
                   onClick={() => duplicateScenario(active.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, background: SURFACE2, border: `1px solid ${BORDER}`, color: '#94a3b8', borderRadius: 8, padding: '8px 12px', fontSize: 13, cursor: 'pointer' }}
@@ -344,6 +372,7 @@ export default function ScenarioSimulator() {
               const otifDelta = (r.otifPct - b.otifPct) * 100;
               const costDelta = r.costToServePerOrder - b.costToServePerOrder;
               const carbonDelta = r.carbonKgPerOrder - b.carbonKgPerOrder;
+              const uncertaintySummary = buildUncertaintySummary(active);
               return (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
@@ -381,6 +410,29 @@ export default function ScenarioSimulator() {
                       />
                     )}
                   </div>
+
+                  <GlassCard style={{ marginBottom: 16 }} data-demo-anchor="demo-scenario-uncertainty">
+                    <div style={{ marginBottom: 12 }}>
+                      <h3 style={{ color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+                        Uncertainty & Sensitivity
+                      </h3>
+                      <p style={{ color: '#cbd5e1', fontSize: 12, margin: 0 }}>
+                        Confidence score {uncertaintySummary.confidenceScore}% based on parameter volatility and implementation complexity.
+                      </p>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                      {uncertaintySummary.drivers.map((driver) => (
+                        <div key={driver.label} style={{ background: '#1a2840', border: '1px solid #2e4168', borderRadius: 8, padding: '10px 12px' }}>
+                          <div style={{ color: '#64748b', fontSize: 10, marginBottom: 4 }}>{driver.label}</div>
+                          <div style={{ color: '#e2e8f0', fontSize: 14, fontWeight: 700, marginBottom: 3 }}>{driver.value}</div>
+                          <div style={{ color: driver.riskLevel === 'High' ? '#f59e0b' : driver.riskLevel === 'Medium' ? '#93c5fd' : '#86efac', fontSize: 10, fontWeight: 600 }}>
+                            {driver.riskLevel} sensitivity
+                          </div>
+                          <div style={{ color: '#64748b', fontSize: 10, marginTop: 3, lineHeight: 1.4 }}>{driver.note}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </GlassCard>
 
                   {/* Executive Summary */}
                   <GlassCard style={{ marginBottom: 16 }}>
@@ -440,6 +492,90 @@ export default function ScenarioSimulator() {
           </div>
         )}
       </div>
+
+      {showAssumptionsLog && active && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.58)', zIndex: 60, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ width: 460, maxWidth: '100%', background: SURFACE, borderLeft: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '14px 16px', borderBottom: `1px solid ${BORDER}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ color: '#e2e8f0', fontSize: 14, fontWeight: 700 }}>Assumptions Log</div>
+                <div style={{ color: '#64748b', fontSize: 11 }}>{active.name} · v{active.version}</div>
+              </div>
+              <button
+                onClick={() => setShowAssumptionsLog(false)}
+                style={{ border: 'none', background: 'transparent', color: '#64748b', cursor: 'pointer' }}
+                aria-label="Close assumptions log"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ padding: 16, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <GlassCard noPadding>
+                <div style={{ padding: 12 }}>
+                  <div style={{ color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                    Scenario Notes
+                  </div>
+                  <div style={{ color: '#cbd5e1', fontSize: 12, lineHeight: 1.6 }}>
+                    {active.assumptionNotes || 'No additional assumption notes supplied.'}
+                  </div>
+                </div>
+              </GlassCard>
+
+              <GlassCard noPadding>
+                <div style={{ padding: 12, borderBottom: `1px solid ${BORDER}` }}>
+                  <div style={{ color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Parameter Baseline
+                  </div>
+                </div>
+                <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {active.parameters.length === 0 ? (
+                    <div style={{ color: '#64748b', fontSize: 11 }}>No tunable parameters for this scenario.</div>
+                  ) : (
+                    active.parameters.map((parameter) => (
+                      <div key={parameter.key} style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.6fr', gap: 8, borderBottom: '1px dashed #253652', paddingBottom: 6 }}>
+                        <div>
+                          <div style={{ color: '#e2e8f0', fontSize: 12, fontWeight: 600 }}>{parameter.label}</div>
+                          <div style={{ color: '#64748b', fontSize: 10 }}>{parameter.key}</div>
+                        </div>
+                        <div style={{ color: '#93c5fd', fontSize: 12, fontWeight: 700, textAlign: 'right' }}>
+                          {String(parameter.value)}{parameter.unit ? ` ${parameter.unit}` : ''}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </GlassCard>
+
+              <GlassCard noPadding data-demo-anchor="demo-scenario-assumptions-log">
+                <div style={{ padding: 12, borderBottom: `1px solid ${BORDER}` }}>
+                  <div style={{ color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Audit Timeline
+                  </div>
+                </div>
+                <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {active.auditLog.length === 0 ? (
+                    <div style={{ color: '#64748b', fontSize: 11 }}>No audit events recorded.</div>
+                  ) : (
+                    active.auditLog
+                      .slice()
+                      .reverse()
+                      .map((entry) => (
+                        <div key={`${entry.timestamp}-${entry.action}`} style={{ borderLeft: '2px solid #335581', paddingLeft: 8 }}>
+                          <div style={{ color: '#e2e8f0', fontSize: 11, fontWeight: 700 }}>{entry.action}</div>
+                          <div style={{ color: '#94a3b8', fontSize: 11, lineHeight: 1.45 }}>{entry.details}</div>
+                          <div style={{ color: '#64748b', fontSize: 10, marginTop: 2 }}>
+                            {entry.user} · {new Date(entry.timestamp).toLocaleString()}
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </GlassCard>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* NEW SCENARIO BUILDER MODAL */}
       {showBuilder && (
@@ -623,6 +759,73 @@ export default function ScenarioSimulator() {
       )}
     </div>
   );
+}
+
+interface SensitivityDriver {
+  label: string;
+  value: string;
+  riskLevel: 'Low' | 'Medium' | 'High';
+  note: string;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function numericScenarioParam(parameters: ScenarioParameter[], key: string, fallback: number): number {
+  const raw = parameters.find((parameter) => parameter.key === key)?.value;
+  const value = typeof raw === 'number' ? raw : Number(raw);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function classifyRisk(value: number, mediumThreshold: number, highThreshold: number): 'Low' | 'Medium' | 'High' {
+  if (value >= highThreshold) return 'High';
+  if (value >= mediumThreshold) return 'Medium';
+  return 'Low';
+}
+
+function buildUncertaintySummary(scenario: Scenario): { confidenceScore: number; drivers: SensitivityDriver[] } {
+  const baseline = scenario.baseline;
+  const result = scenario.result ?? baseline;
+  const otifDeltaPp = Math.abs((result.otifPct - baseline.otifPct) * 100);
+  const demandVolatility = Math.max(
+    numericScenarioParam(scenario.parameters, 'demandGrowth', 8),
+    numericScenarioParam(scenario.parameters, 'demandSurgePct', 0),
+    numericScenarioParam(scenario.parameters, 'volumeRedirectPct', 0)
+  );
+  const capexMillions = Math.max(
+    numericScenarioParam(scenario.parameters, 'capexBudget', 0),
+    numericScenarioParam(scenario.parameters, 'capexUSD', 0),
+    numericScenarioParam(scenario.parameters, 'totalCapex', 0),
+    numericScenarioParam(scenario.parameters, 'capexMillions', 0)
+  );
+  const transitShiftDays = Math.abs(result.totalTransitDaysAvg - baseline.totalTransitDaysAvg);
+
+  const confidencePenalty = otifDeltaPp * 5.5 + demandVolatility * 0.45 + capexMillions * 1.6 + transitShiftDays * 12;
+  const confidenceScore = Math.round(clamp(94 - confidencePenalty, 61, 97));
+
+  const drivers: SensitivityDriver[] = [
+    {
+      label: 'Demand & Volume Shock',
+      value: `${demandVolatility.toFixed(1)}% swing modeled`,
+      riskLevel: classifyRisk(demandVolatility, 10, 20),
+      note: 'Higher demand volatility increases route and labor uncertainty.',
+    },
+    {
+      label: 'Service Buffer',
+      value: `${otifDeltaPp.toFixed(2)}pp OTIF movement`,
+      riskLevel: classifyRisk(otifDeltaPp, 0.6, 1.2),
+      note: 'OTIF movement is the strongest predictor of operational execution risk.',
+    },
+    {
+      label: 'Capital / Execution Exposure',
+      value: capexMillions > 0 ? `$${capexMillions.toFixed(1)}M implementation` : 'Operational change only',
+      riskLevel: capexMillions > 12 ? 'High' : capexMillions > 3 ? 'Medium' : 'Low',
+      note: capexMillions > 0 ? 'CapEx assumptions are sensitive to schedule and vendor readiness.' : 'No capex dependency; impact driven by run-rate operations.',
+    },
+  ];
+
+  return { confidenceScore, drivers };
 }
 
 function MetricRow({ label, value, positive, neutral }: { label: string; value: string; positive: boolean; neutral?: boolean }) {

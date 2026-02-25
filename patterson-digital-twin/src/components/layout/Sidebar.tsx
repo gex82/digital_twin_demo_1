@@ -26,8 +26,8 @@ export function Sidebar() {
       style={{
         width: sidebarCollapsed ? 64 : 240,
         minWidth: sidebarCollapsed ? 64 : 240,
-        background: '#0d1e35',
-        borderRight: '1px solid #2e4168',
+        background: '#002846',
+        borderRight: '1px solid var(--border-subtle)',
         display: 'flex',
         flexDirection: 'column',
         transition: 'all 0.3s ease',
@@ -71,14 +71,14 @@ export function Sidebar() {
                 margin: '2px 8px',
                 borderRadius: 8,
                 cursor: 'pointer',
-                background: isActive ? 'rgba(0, 110, 255, 0.15)' : 'transparent',
-                borderLeft: isActive ? '2px solid #006EFF' : '2px solid transparent',
+                background: isActive ? 'rgba(208, 100, 20, 0.15)' : 'transparent',
+                borderLeft: isActive ? '2px solid var(--patterson-accent)' : '2px solid transparent',
                 transition: 'all 0.15s',
               }}
               onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = '#1a2840'; }}
               onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
               >
-                <Icon size={18} color={isActive ? '#006EFF' : '#94a3b8'} strokeWidth={isActive ? 2.5 : 1.8} style={{ flexShrink: 0 }} />
+                <Icon size={18} color={isActive ? '#fdba74' : '#94a3b8'} strokeWidth={isActive ? 2.5 : 1.8} style={{ flexShrink: 0 }} />
                 {!sidebarCollapsed && (
                   <>
                     <span style={{

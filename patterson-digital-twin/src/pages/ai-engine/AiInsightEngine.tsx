@@ -4,6 +4,7 @@ import { useAiStore } from '../../store/aiStore';
 import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
 import type { AiRecommendation } from '../../types';
 import { useShallow } from 'zustand/react/shallow';
+import { useUiStore } from '../../store/uiStore';
 
 const BLUE = '#006EFF';
 const TEAL = '#00C2A8';
@@ -80,6 +81,7 @@ export default function AiInsightEngine() {
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [displayMessages, setDisplayMessages] = useState(messages.length === 0 ? [WELCOME_MSG] : messages);
+  const pushToast = useUiStore((state) => state.pushToast);
 
   useDemoStageBindings('/app/ai', useMemo(() => ({
     AI_SEND_STAGE_PROMPT: async (action) => {
@@ -96,8 +98,13 @@ export default function AiInsightEngine() {
       if (!topRecommendation) return;
       pinInsight(topRecommendation);
       createScenarioFromRecommendation(topRecommendation.title);
+      pushToast({
+        title: 'Recommendation Pinned',
+        message: `${topRecommendation.title} converted into scenario draft.`,
+        tone: 'success',
+      });
     },
-  }), [createScenarioFromRecommendation, pinInsight, sendMessageAsync]));
+  }), [createScenarioFromRecommendation, pinInsight, pushToast, sendMessageAsync]));
 
   // Seed welcome on first load
   useEffect(() => {
@@ -257,13 +264,27 @@ export default function AiInsightEngine() {
                       <p style={{ color: '#94a3b8', fontSize: 11, margin: 0, lineHeight: 1.5 }}>{rec.detail}</p>
                       <div style={{ marginTop: 7, display: 'flex', gap: 6 }}>
                         <button
-                          onClick={() => pinInsight(rec)}
+                          onClick={() => {
+                            pinInsight(rec);
+                            pushToast({
+                              title: 'Insight Pinned',
+                              message: `${rec.title} added to your action shortlist.`,
+                              tone: 'info',
+                            });
+                          }}
                           style={{ background: `${TEAL}20`, border: `1px solid ${TEAL}40`, color: TEAL, borderRadius: 4, padding: '3px 8px', fontSize: 10, cursor: 'pointer' }}
                         >
                           Pin
                         </button>
                         <button
-                          onClick={() => createScenarioFromRecommendation(rec.title)}
+                          onClick={() => {
+                            createScenarioFromRecommendation(rec.title);
+                            pushToast({
+                              title: 'Scenario Draft Created',
+                              message: `${rec.title} handed off to Scenario Simulator.`,
+                              tone: 'success',
+                            });
+                          }}
                           style={{ background: `${BLUE}20`, border: `1px solid ${BLUE}40`, color: BLUE, borderRadius: 4, padding: '3px 8px', fontSize: 10, cursor: 'pointer' }}
                         >
                           Create Scenario →

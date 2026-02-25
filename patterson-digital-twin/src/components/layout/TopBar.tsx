@@ -69,9 +69,9 @@ export function TopBar({ title, subtitle }: TopBarProps) {
   return (
     <header style={{
       height: 64,
-      background: 'rgba(13, 30, 53, 0.95)',
+      background: 'rgba(0, 38, 74, 0.95)',
       backdropFilter: 'blur(8px)',
-      borderBottom: '1px solid #2e4168',
+      borderBottom: '1px solid var(--border-subtle)',
       display: 'flex',
       alignItems: 'center',
       padding: '0 24px',
@@ -80,8 +80,8 @@ export function TopBar({ title, subtitle }: TopBarProps) {
     }}>
       {/* Page title */}
       <div style={{ flex: 1 }}>
-        <h1 style={{ fontSize: 16, fontWeight: 700, color: 'white', margin: 0, lineHeight: 1.2 }}>{title}</h1>
-        {subtitle && <p style={{ fontSize: 11, color: '#64748b', margin: 0, marginTop: 2 }}>{subtitle}</p>}
+        <h1 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-on-primary)', margin: 0, lineHeight: 1.2 }}>{title}</h1>
+        {subtitle && <p style={{ fontSize: 11, color: '#b6c4d8', margin: 0, marginTop: 2 }}>{subtitle}</p>}
       </div>
 
       {/* Segment filter */}
@@ -97,8 +97,8 @@ export function TopBar({ title, subtitle }: TopBarProps) {
               cursor: 'pointer',
               fontSize: 12,
               fontWeight: 500,
-              background: globalSegmentFilter === seg ? '#006EFF' : 'transparent',
-              color: globalSegmentFilter === seg ? 'white' : '#94a3b8',
+              background: globalSegmentFilter === seg ? 'var(--patterson-accent)' : 'transparent',
+              color: globalSegmentFilter === seg ? '#fff' : '#94a3b8',
               transition: 'all 0.15s',
             }}
           >
@@ -159,10 +159,10 @@ export function TopBar({ title, subtitle }: TopBarProps) {
         <button
           onClick={handleDemoButton}
           style={{
-            background: 'rgba(0,110,255,0.18)',
-            border: '1px solid rgba(0,110,255,0.42)',
+            background: 'rgba(208,100,20,0.18)',
+            border: '1px solid rgba(208,100,20,0.42)',
             borderRadius: 8,
-            color: '#93c5fd',
+            color: '#fdba74',
             padding: '6px 10px',
             cursor: 'pointer',
             fontSize: 11,

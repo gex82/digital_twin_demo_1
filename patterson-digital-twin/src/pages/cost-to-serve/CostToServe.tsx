@@ -7,6 +7,7 @@ import { formatCurrency } from '../../utils/formatters';
 import { useScenarioStore } from '../../store/scenarioStore';
 import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
 import { useShallow } from 'zustand/react/shallow';
+import { useUiStore } from '../../store/uiStore';
 
 const BLUE = '#006EFF';
 const TEAL = '#00C2A8';
@@ -53,6 +54,7 @@ export default function CostToServe() {
       setActiveScenario: state.setActiveScenario,
     }))
   );
+  const pushToast = useUiStore((state) => state.pushToast);
 
   function toggleSort(col: typeof sortCol) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -78,6 +80,11 @@ export default function CostToServe() {
       createdBy: 'Cost-to-Serve',
     });
     setActiveScenario(scenarioId);
+    pushToast({
+      title: 'Lane Action Added',
+      message: `${lane.origin.split(' ')[0]} -> ${lane.dest} optimization moved into Scenario Simulator.`,
+      tone: 'info',
+    });
   }
 
   useDemoStageBindings('/app/cost-to-serve', useMemo(() => ({

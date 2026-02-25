@@ -22,7 +22,7 @@ export function AppShell() {
   const meta = PAGE_META[location.pathname] || { title: 'Patterson Network Intelligence', subtitle: '' };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#0A1628' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--surface-canvas)' }}>
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <TopBar title={meta.title} subtitle={meta.subtitle} />

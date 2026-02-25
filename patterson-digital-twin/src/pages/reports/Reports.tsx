@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Download, Share2, Printer, Check } from 'lucide-react';
 import { useScenarioStore } from '../../store/scenarioStore';
 import { NETWORK_KPIS } from '../../data/kpis';
@@ -6,6 +6,9 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { StatusPill } from '../../components/ui/StatusPill';
 import { formatCurrency } from '../../utils/formatters';
 import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
+import { AppButton } from '../../components/ui/AppButton';
+import { SkeletonBlock } from '../../components/ui/SkeletonBlock';
+import { useUiStore } from '../../store/uiStore';
 
 const BLUE = '#006EFF';
 const TEAL = '#00C2A8';
@@ -51,6 +54,8 @@ export default function Reports() {
   const [copyMsg, setCopyMsg] = useState('');
   const [shareMsg, setShareMsg] = useState('');
   const [artifactMsg, setArtifactMsg] = useState('');
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const pushToast = useUiStore((state) => state.pushToast);
 
   const completeScenarios = scenarios.filter(s => s.result);
 
@@ -84,6 +89,11 @@ export default function Reports() {
 
   function generatePackArtifact(scenarioName: string) {
     setArtifactMsg(`Generated pack artifact: ${scenarioName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`);
+    pushToast({
+      title: 'Scenario Pack Generated',
+      message: `${scenarioName} pack exported and staged for executive review.`,
+      tone: 'success',
+    });
     window.setTimeout(() => setArtifactMsg(''), 3200);
   }
 
@@ -113,6 +123,7 @@ export default function Reports() {
     a.download = `patterson-report-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    pushToast({ title: 'Export Complete', message: 'Downloaded report data as JSON artifact.', tone: 'info' });
   }
 
   function handleCopy() {
@@ -120,14 +131,22 @@ export default function Reports() {
       ?? `Patterson Companies Network Intelligence Report — ${new Date().toLocaleDateString()}. Network OTIF: 97.2%. Annual network cost: $847.3M. Cost/order: $14.82. Three FCs are above 85% utilization requiring capacity planning. Recommend approving SCN-003 Carrier Strategy Shift for $8.2M annual savings.`;
     navigator.clipboard.writeText(text).then(() => {
       setCopyMsg('Copied!');
+      pushToast({ title: 'Summary Copied', message: 'Executive summary copied to clipboard.', tone: 'success' });
       setTimeout(() => setCopyMsg(''), 2000);
     });
   }
 
   function handleShare() {
     setShareMsg('Link copied: https://patterson-digital-twin.pages.dev/reports/exec');
+    pushToast({ title: 'Share Link Ready', message: 'Report link copied for stakeholder distribution.', tone: 'info' });
     setTimeout(() => setShareMsg(''), 3000);
   }
+
+  useEffect(() => {
+    setIsPreviewLoading(true);
+    const timer = window.setTimeout(() => setIsPreviewLoading(false), 420);
+    return () => window.clearTimeout(timer);
+  }, [selectedReport, selectedScenarioId]);
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden', background: '#0A1628' }}>
@@ -221,18 +240,18 @@ export default function Reports() {
             {copyMsg && <span style={{ color: GREEN, fontSize: 11, alignSelf: 'center' }}>{copyMsg}</span>}
             {shareMsg && <span style={{ color: TEAL, fontSize: 10, alignSelf: 'center', maxWidth: 240 }}>{shareMsg}</span>}
             {artifactMsg && <span style={{ color: '#93c5fd', fontSize: 10, alignSelf: 'center', maxWidth: 320 }}>{artifactMsg}</span>}
-            <button onClick={downloadJson} style={{ display: 'flex', alignItems: 'center', gap: 5, background: SURFACE2, border: `1px solid ${BORDER}`, color: '#94a3b8', borderRadius: 6, padding: '5px 10px', fontSize: 11, cursor: 'pointer' }}>
+            <AppButton onClick={downloadJson} variant="secondary" size="sm" style={{ fontSize: 11 }}>
               <Download size={12} /> Export JSON
-            </button>
-            <button onClick={handleCopy} style={{ display: 'flex', alignItems: 'center', gap: 5, background: SURFACE2, border: `1px solid ${BORDER}`, color: '#94a3b8', borderRadius: 6, padding: '5px 10px', fontSize: 11, cursor: 'pointer' }}>
+            </AppButton>
+            <AppButton onClick={handleCopy} variant="secondary" size="sm" style={{ fontSize: 11 }}>
               <Check size={12} /> Copy Summary
-            </button>
-            <button onClick={handleShare} style={{ display: 'flex', alignItems: 'center', gap: 5, background: SURFACE2, border: `1px solid ${BORDER}`, color: '#94a3b8', borderRadius: 6, padding: '5px 10px', fontSize: 11, cursor: 'pointer' }}>
+            </AppButton>
+            <AppButton onClick={handleShare} variant="secondary" size="sm" style={{ fontSize: 11 }}>
               <Share2 size={12} /> Share Link
-            </button>
-            <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 5, background: BLUE, border: 'none', color: '#fff', borderRadius: 6, padding: '5px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+            </AppButton>
+            <AppButton onClick={() => window.print()} variant="primary" size="sm" style={{ fontSize: 11 }}>
               <Printer size={12} /> Print
-            </button>
+            </AppButton>
           </div>
         </div>
 
@@ -241,7 +260,20 @@ export default function Reports() {
           <div style={{ maxWidth: 760, margin: '0 auto' }}>
 
             {/* Document preview */}
-            <div style={{ background: '#fff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.4)', marginBottom: 20 }} data-demo-anchor="demo-reports-preview">
+            {isPreviewLoading ? (
+              <div style={{ background: '#fff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.4)', marginBottom: 20, padding: 24 }} data-demo-anchor="demo-reports-preview">
+                <div style={{ marginBottom: 10, color: '#1f2937', fontSize: 12, fontWeight: 600 }}>
+                  Compiling executive report package...
+                </div>
+                <SkeletonBlock height={20} style={{ marginBottom: 10 }} />
+                <SkeletonBlock height={12} style={{ marginBottom: 8 }} />
+                <SkeletonBlock height={12} style={{ marginBottom: 8 }} />
+                <SkeletonBlock height={12} width="86%" style={{ marginBottom: 16 }} />
+                <SkeletonBlock height={150} style={{ marginBottom: 10 }} />
+                <SkeletonBlock height={120} />
+              </div>
+            ) : (
+              <div style={{ background: '#fff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.4)', marginBottom: 20 }} data-demo-anchor="demo-reports-preview">
               {/* Report header band */}
               <div style={{ background: 'linear-gradient(135deg, #0A1628, #006EFF)', padding: '20px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
@@ -390,7 +422,8 @@ export default function Reports() {
                   </>
                 )}
               </div>
-            </div>
+              </div>
+            )}
 
             {/* Report Activity */}
             <GlassCard>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Info, CheckCircle, XCircle, ArrowRight, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle, XCircle, ArrowRight, TrendingUp, Database, RefreshCcw, ShieldAlert } from 'lucide-react';
 import { NetworkMap } from '../../components/map/NetworkMap';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { GlassCard } from '../../components/ui/GlassCard';
@@ -15,6 +15,8 @@ import { useNavigate } from 'react-router-dom';
 import { useUiStore } from '../../store/uiStore';
 import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
 import { useShallow } from 'zustand/react/shallow';
+import { AppButton } from '../../components/ui/AppButton';
+import { SkeletonBlock } from '../../components/ui/SkeletonBlock';
 
 const ALERT_ICONS = {
   critical: <XCircle size={14} color="#ef4444" />,
@@ -35,11 +37,25 @@ export default function Dashboard() {
   const [focusHealth, setFocusHealth] = useState(false);
   const [showDecisionRecap, setShowDecisionRecap] = useState(false);
   const { scenarios } = useScenarioStore();
-  const { maskSensitiveCosts, integrationSources, decisionTrail } = useUiStore(
+  const {
+    maskSensitiveCosts,
+    integrationSources,
+    integrationIncidents,
+    isIntegrationRefreshing,
+    decisionTrail,
+    simulateIntegrationRefresh,
+    acknowledgeIncident,
+    addDecisionTrail,
+  } = useUiStore(
     useShallow((state) => ({
       maskSensitiveCosts: state.maskSensitiveCosts,
       integrationSources: state.integrationSources,
+      integrationIncidents: state.integrationIncidents,
+      isIntegrationRefreshing: state.isIntegrationRefreshing,
       decisionTrail: state.decisionTrail,
+      simulateIntegrationRefresh: state.simulateIntegrationRefresh,
+      acknowledgeIncident: state.acknowledgeIncident,
+      addDecisionTrail: state.addDecisionTrail,
     }))
   );
   const activeScenarios = scenarios.filter(s => s.status === 'Complete' || s.status === 'Approved');
@@ -50,6 +66,10 @@ export default function Dashboard() {
   const healthyConnectors = useMemo(
     () => integrationSources.filter((source) => source.status === 'Healthy').length,
     [integrationSources]
+  );
+  const unresolvedIncidents = integrationIncidents.filter((incident) => !incident.acknowledged);
+  const averageLatencyMs = Math.round(
+    integrationSources.reduce((sum, source) => sum + source.latencyMs, 0) / integrationSources.length
   );
 
   useDemoStageBindings('/app/dashboard', useMemo(() => ({
@@ -67,6 +87,11 @@ export default function Dashboard() {
     .filter(f => f.utilizationPct >= 0.80)
     .sort((a, b) => b.utilizationPct - a.utilizationPct)
     .slice(0, 3);
+
+  function refreshDataOps() {
+    simulateIntegrationRefresh();
+    addDecisionTrail('Integration Refresh', 'Executed connector refresh and lineage check.');
+  }
 
   return (
     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -87,7 +112,7 @@ export default function Dashboard() {
           <div>
             <div style={{ color: '#64748b', fontSize: 11, marginBottom: 4 }}>Latency Envelope</div>
             <div style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 700 }}>
-              {Math.round(integrationSources.reduce((sum, source) => sum + source.latencyMs, 0) / integrationSources.length)}ms avg
+              {averageLatencyMs}ms avg
             </div>
           </div>
           <div>
@@ -95,6 +120,114 @@ export default function Dashboard() {
             <div style={{ color: '#94a3b8', fontSize: 11 }}>
               {decisionTrail.length > 0 ? decisionTrail[decisionTrail.length - 1].step : 'No stage actions recorded yet'}
             </div>
+          </div>
+        </div>
+      </GlassCard>
+
+      <GlassCard data-demo-anchor="demo-data-ops-panel">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Database size={14} color="#93c5fd" />
+            <div>
+              <div style={{ color: '#93c5fd', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Data Operations
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: 11 }}>
+                Source freshness, lineage trace, and connector health simulation
+              </div>
+            </div>
+          </div>
+          <AppButton variant="secondary" size="sm" disabled={isIntegrationRefreshing} onClick={refreshDataOps}>
+            <RefreshCcw size={12} style={{ animation: isIntegrationRefreshing ? 'spin 1s linear infinite' : undefined }} />
+            {isIntegrationRefreshing ? 'Refreshing...' : 'Refresh Connectors'}
+          </AppButton>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 14 }}>
+          <div style={{ border: '1px solid #2e4168', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.7fr 0.6fr 0.9fr 1fr', gap: 8, padding: '8px 10px', background: '#17253b', color: '#64748b', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <span>Source</span>
+              <span>Status</span>
+              <span>Freshness</span>
+              <span>Latency</span>
+              <span>Lineage</span>
+            </div>
+            {isIntegrationRefreshing ? (
+              <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[0, 1, 2, 3, 4].map((row) => (
+                  <div key={row} style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.7fr 0.6fr 0.9fr 1fr', gap: 8 }}>
+                    <SkeletonBlock height={10} />
+                    <SkeletonBlock height={10} />
+                    <SkeletonBlock height={10} />
+                    <SkeletonBlock height={10} />
+                    <SkeletonBlock height={10} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              integrationSources.map((source) => {
+                const statusColor =
+                  source.status === 'Healthy' ? '#10b981' : source.status === 'Degraded' ? '#d06414' : '#ef4444';
+                return (
+                  <div
+                    key={source.id}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1.4fr 0.7fr 0.6fr 0.9fr 1fr',
+                      gap: 8,
+                      padding: '9px 10px',
+                      borderTop: '1px solid #22324f',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <span style={{ color: '#e2e8f0', fontSize: 12 }}>{source.name}</span>
+                    <span style={{ color: statusColor, fontSize: 11, fontWeight: 700 }}>{source.status}</span>
+                    <span style={{ color: '#94a3b8', fontSize: 11 }}>{source.freshnessLabel}</span>
+                    <span style={{ color: '#94a3b8', fontSize: 11 }}>{source.latencyMs}ms</span>
+                    <span style={{ color: '#64748b', fontSize: 10 }}>{source.lineageTag}</span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div style={{ border: '1px solid #2e4168', borderRadius: 10, padding: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Open Incidents
+              </div>
+              <span style={{ color: unresolvedIncidents.length > 0 ? '#d06414' : '#10b981', fontSize: 11, fontWeight: 700 }}>
+                {unresolvedIncidents.length}
+              </span>
+            </div>
+            {unresolvedIncidents.length === 0 ? (
+              <div style={{ color: '#64748b', fontSize: 11 }}>No active connector incidents.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {unresolvedIncidents.map((incident) => (
+                  <div key={incident.id} style={{ background: 'rgba(208,100,20,0.08)', border: '1px solid rgba(208,100,20,0.28)', borderRadius: 8, padding: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <ShieldAlert size={12} color="#fdba74" />
+                        <span style={{ color: '#fdba74', fontSize: 11, fontWeight: 700 }}>{incident.title}</span>
+                      </div>
+                      <AppButton
+                        size="sm"
+                        variant="ghost"
+                        style={{ padding: '3px 6px', fontSize: 10 }}
+                        onClick={() => acknowledgeIncident(incident.id)}
+                      >
+                        Ack
+                      </AppButton>
+                    </div>
+                    <div style={{ color: '#94a3b8', fontSize: 10, lineHeight: 1.4 }}>{incident.detail}</div>
+                    <div style={{ color: '#64748b', fontSize: 9, marginTop: 4 }}>
+                      {new Date(incident.timestamp).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </GlassCard>
