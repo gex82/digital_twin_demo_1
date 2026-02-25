@@ -1,0 +1,12 @@
+# Exclude specific files as requested
+Patterson Companies Digital Twin RFI FINAL V1.0.docx
+RFI_Reference.md
+deep-research-report.md
+
+# Build artifacts and dependencies
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.log
