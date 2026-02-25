@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { PRIMARY_FACILITIES } from '../../data/facilities';
 import { OTIF_TREND, CARRIER_OTIF } from '../../data/otif';
 import { OtifTrendChart } from '../../components/charts/OtifTrendChart';
 import { NETWORK_ALERTS } from '../../data/alerts';
 import { GlassCard } from '../../components/ui/GlassCard';
+import { useScenarioStore } from '../../store/scenarioStore';
+import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
+import { useShallow } from 'zustand/react/shallow';
 
 const BLUE = '#006EFF';
 const BORDER = '#2e4168';
@@ -62,6 +65,14 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
 
 export default function ServiceLevel() {
   const [tab, setTab] = useState<Tab>('OTIF Trend');
+  const [sbrRequestedCarrier, setSbrRequestedCarrier] = useState<string | null>(null);
+  const [sbrMessage, setSbrMessage] = useState('');
+  const { createScenarioFromTemplate, setActiveScenario } = useScenarioStore(
+    useShallow((state) => ({
+      createScenarioFromTemplate: state.createScenarioFromTemplate,
+      setActiveScenario: state.setActiveScenario,
+    }))
+  );
 
   const TOP_KPIS = [
     { label: 'Network OTIF', value: '97.2%', color: GREEN, delta: '+0.4pp YoY' },
@@ -69,6 +80,33 @@ export default function ServiceLevel() {
     { label: 'Animal Health OTIF', value: '96.7%', color: YELLOW, delta: '-0.1pp YoY' },
     { label: 'Next-Day Coverage', value: '91%', color: BLUE, delta: '+2pp YoY' },
   ];
+
+  function requestSbr(carrier: string) {
+    setSbrRequestedCarrier(carrier);
+    setSbrMessage(`SBR request submitted for ${carrier}. Procurement and carrier ops notified.`);
+    window.setTimeout(() => setSbrMessage(''), 2600);
+  }
+
+  function modelCoverageScenario(region: string) {
+    const scenarioId = createScenarioFromTemplate('SCN-002', {
+      name: `Coverage Improvement: ${region}`,
+      description: `Model service improvement options for ${region}.`,
+      assumptionNotes: `Triggered from Service Level coverage analysis for ${region}.`,
+      tags: ['Service-Level', 'Coverage', region],
+      createdBy: 'Service Ops',
+    });
+    setActiveScenario(scenarioId);
+  }
+
+  useDemoStageBindings('/app/service-level', useMemo(() => ({
+    SERVICE_SHOW_OTIF_RISK: async () => {
+      setTab('Carrier Performance');
+    },
+    SERVICE_TRIGGER_SBR: async () => {
+      setTab('Carrier Performance');
+      requestSbr('FedEx Ground');
+    },
+  }), []));
 
   return (
     <div style={{ padding: 24, overflowY: 'auto', height: 'calc(100vh - 64px)', boxSizing: 'border-box' }}>
@@ -95,6 +133,12 @@ export default function ServiceLevel() {
           }}>{t}</button>
         ))}
       </div>
+
+      {sbrMessage && (
+        <div style={{ marginBottom: 14, background: 'rgba(0,194,168,0.1)', border: '1px solid rgba(0,194,168,0.3)', borderRadius: 8, padding: '8px 10px', color: '#00C2A8', fontSize: 12 }}>
+          {sbrMessage}
+        </div>
+      )}
 
       {/* OTIF Trend */}
       {tab === 'OTIF Trend' && (
@@ -157,7 +201,7 @@ export default function ServiceLevel() {
           <div style={{ padding: '12px 16px', borderBottom: `1px solid ${BORDER}` }}>
             <h3 style={{ color: '#e2e8f0', fontSize: 14, fontWeight: 600, margin: 0 }}>Carrier OTIF Performance</h3>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }} data-demo-anchor="demo-service-carriers">
             <thead>
               <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
                 {['Carrier', 'OTIF %', 'Volume Share', 'Trend', '30-Day Δ', 'Contract Expiry', ''].map(h => (
@@ -198,8 +242,11 @@ export default function ServiceLevel() {
                   </td>
                   <td style={{ padding: '10px 14px', color: '#64748b', fontSize: 11 }}>{c.contractExpiry}</td>
                   <td style={{ padding: '10px 14px' }}>
-                    <button style={{ background: `${BLUE}20`, border: `1px solid ${BLUE}40`, color: BLUE, borderRadius: 5, padding: '3px 8px', fontSize: 10, cursor: 'pointer' }}>
-                      Request SBR
+                    <button
+                      onClick={() => requestSbr(c.carrier)}
+                      style={{ background: `${BLUE}20`, border: `1px solid ${BLUE}40`, color: BLUE, borderRadius: 5, padding: '3px 8px', fontSize: 10, cursor: 'pointer' }}
+                    >
+                      {sbrRequestedCarrier === c.carrier ? 'SBR Requested' : 'Request SBR'}
                     </button>
                   </td>
                 </tr>
@@ -246,7 +293,10 @@ export default function ServiceLevel() {
                     <td style={{ padding: '10px 14px', color: '#94a3b8', fontSize: 12 }}>{r.avgTransit.toFixed(1)}</td>
                     <td style={{ padding: '10px 14px' }}>
                       {(r.nextDay < 80 || r.popCov < 85) && (
-                        <button style={{ background: `${YELLOW}20`, border: `1px solid ${YELLOW}40`, color: YELLOW, borderRadius: 5, padding: '3px 8px', fontSize: 10, cursor: 'pointer' }}>
+                        <button
+                          onClick={() => modelCoverageScenario(r.region)}
+                          style={{ background: `${YELLOW}20`, border: `1px solid ${YELLOW}40`, color: YELLOW, borderRadius: 5, padding: '3px 8px', fontSize: 10, cursor: 'pointer' }}
+                        >
                           Improve Coverage
                         </button>
                       )}
@@ -266,7 +316,10 @@ export default function ServiceLevel() {
                   <span style={{ color: '#94a3b8', fontSize: 11 }}>{gap}</span>
                 </div>
               ))}
-              <button style={{ width: '100%', marginTop: 8, background: `${BLUE}20`, border: `1px solid ${BLUE}40`, color: BLUE, borderRadius: 6, padding: '7px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+              <button
+                onClick={() => modelCoverageScenario('Mountain West')}
+                style={{ width: '100%', marginTop: 8, background: `${BLUE}20`, border: `1px solid ${BLUE}40`, color: BLUE, borderRadius: 6, padding: '7px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+              >
                 Model Hub Expansion
               </button>
             </GlassCard>

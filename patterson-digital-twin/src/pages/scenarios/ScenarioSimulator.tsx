@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Play, Plus, Copy, CheckCircle, Lock, ChevronRight, ChevronLeft,
   Sliders, Building2, BarChart2, Clock, DollarSign, TrendingUp,
@@ -12,6 +12,7 @@ import { StatusPill } from '../../components/ui/StatusPill';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { ScenarioCompareChart } from '../../components/charts/ScenarioCompareChart';
 import type { ScenarioType } from '../../types';
+import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
 
 const SURFACE = '#1a2840';
 const SURFACE2 = '#1e2f4a';
@@ -38,7 +39,7 @@ export default function ScenarioSimulator() {
     scenarios, activeScenarioId, setActiveScenario,
     comparisonScenarioIds, addToComparison, removeFromComparison,
     isSimulating, simulationProgress, simulationLog,
-    runScenario, createScenario, duplicateScenario,
+    runScenario, runScenarioAsync, createScenario, createScenarioFromTemplate, duplicateScenario,
     approveScenario, lockScenario,
   } = useScenarioStore();
 
@@ -79,6 +80,31 @@ export default function ScenarioSimulator() {
   const comparison = scenarios.filter(s => comparisonScenarioIds.includes(s.id));
   const baselineScenario = scenarios.find(s => s.isBaseline) ?? null;
 
+  useDemoStageBindings('/app/scenarios', useMemo(() => ({
+    SCENARIO_CREATE_PREFILLED: async (action) => {
+      const templateId = typeof action.payload?.templateId === 'string' ? action.payload.templateId : 'SCN-001';
+      const id = createScenarioFromTemplate(templateId, {
+        name: 'Demo: Midwest Consolidation Candidate',
+        assumptionNotes: 'Assumptions locked for guided demo. Focus: cost-service tradeoff with risk controls.',
+      });
+      setActiveScenario(id);
+      setCompareMode(false);
+    },
+    SCENARIO_SET_ASSUMPTIONS: async () => {
+      setCompareMode(false);
+      setShowBuilder(false);
+      if (activeScenarioId) {
+        setActiveScenario(activeScenarioId);
+      }
+    },
+    SCENARIO_RUN_ACTIVE_AND_WAIT: async () => {
+      const targetId = useScenarioStore.getState().activeScenarioId;
+      if (!targetId) return;
+      await runScenarioAsync(targetId);
+      setCompareMode(false);
+    },
+  }), [activeScenarioId, createScenarioFromTemplate, runScenarioAsync, setActiveScenario]));
+
   function handleRunScenario() {
     if (!activeScenarioId) return;
     runScenario(activeScenarioId);
@@ -101,7 +127,7 @@ export default function ScenarioSimulator() {
 
       {/* LEFT: Scenario List */}
       <div style={{ width: 320, borderRight: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-        <div style={{ padding: '16px', borderBottom: `1px solid ${BORDER}` }}>
+        <div style={{ padding: '16px', borderBottom: `1px solid ${BORDER}` }} data-demo-anchor="demo-scenario-list">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <span style={{ color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Scenarios</span>
             <button
@@ -188,7 +214,7 @@ export default function ScenarioSimulator() {
       </div>
 
       {/* MAIN PANEL */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 24 }} data-demo-anchor="demo-scenario-results">
 
         {/* Compare Mode */}
         {compareMode && comparison.length > 0 ? (

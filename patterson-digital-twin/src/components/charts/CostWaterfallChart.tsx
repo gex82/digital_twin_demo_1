@@ -1,6 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { COST_BUCKETS } from '../../data/costToServe';
 import { GlassCard } from '../ui/GlassCard';
+import { isHeadlessRuntime } from '../../utils/runtime';
 
 const CATEGORY_COLORS: Record<string, string> = {
   Transportation: '#006EFF',
@@ -55,6 +56,39 @@ export function CostWaterfallChart({ height = 320, showTitle = true, compact = f
   const flatData = compact
     ? catData.map(c => ({ subcategory: c.category, category: c.category, annualCostUSD: c.total, costPerOrder: c.total / 68_000_000, pctOfTotal: c.total / 847_300_000 }))
     : COST_BUCKETS.filter(b => b.segment === 'Total').slice(0, 12);
+
+  if (isHeadlessRuntime()) {
+    return (
+      <GlassCard style={{ height: '100%' }}>
+        {showTitle && (
+          <div style={{ marginBottom: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'white' }}>Cost-to-Serve Breakdown</h3>
+            <p style={{ margin: 0, fontSize: 11, color: '#64748b', marginTop: 2 }}>Headless fallback mode</p>
+          </div>
+        )}
+        <div style={{ display: 'grid', gap: 8, minHeight: height - 20 }}>
+          {flatData.slice(0, compact ? flatData.length : 6).map((entry) => (
+            <div
+              key={`${entry.category}-${entry.subcategory}`}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                background: '#1a2840',
+                border: '1px solid #2e4168',
+                borderRadius: 8,
+                padding: '8px 10px',
+              }}
+            >
+              <span style={{ color: '#94a3b8', fontSize: 11 }}>{entry.subcategory}</span>
+              <span style={{ color: '#e2e8f0', fontSize: 12, fontWeight: 700 }}>
+                ${(entry.annualCostUSD / 1_000_000).toFixed(1)}M
+              </span>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+    );
+  }
 
   return (
     <GlassCard style={{ height: '100%' }}>

@@ -1,6 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { GlassCard } from '../ui/GlassCard';
 import type { Scenario } from '../../types';
+import { isHeadlessRuntime } from '../../utils/runtime';
 
 interface Props {
   baseline: Scenario;
@@ -60,6 +61,43 @@ export function ScenarioCompareChart({ baseline, scenarios, height = 260 }: Prop
     });
     return row;
   });
+
+  if (isHeadlessRuntime()) {
+    return (
+      <GlassCard>
+        <div style={{ marginBottom: 16 }}>
+          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'white' }}>Scenario Comparison</h3>
+          <p style={{ margin: 0, fontSize: 11, color: '#64748b', marginTop: 2 }}>Headless fallback mode</p>
+        </div>
+        <div style={{ display: 'grid', gap: 8, minHeight: height - 20 }}>
+          {metrics.map((metric) => (
+            <div
+              key={metric.name}
+              style={{
+                background: '#1a2840',
+                border: '1px solid #2e4168',
+                borderRadius: 8,
+                padding: '8px 10px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span style={{ color: '#94a3b8', fontSize: 11 }}>{metric.name}</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ color: '#64748b', fontSize: 10 }}>Base {metric.format(metric.baseline)}</span>
+                {scenarios.map((scenario) => (
+                  <span key={scenario.id} style={{ color: '#e2e8f0', fontSize: 10 }}>
+                    {metric.format(metric.getValue(scenario))}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+    );
+  }
 
   return (
     <GlassCard>

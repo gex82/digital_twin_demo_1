@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { DEMO_CREDENTIALS } from '../utils/constants';
+import { useDemoStageBindings } from '../hooks/useDemoStageBindings';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -13,12 +14,13 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performLogin = async (overrideEmail?: string, overridePassword?: string) => {
+    const effectiveEmail = overrideEmail ?? email;
+    const effectivePassword = overridePassword ?? password;
     setError('');
     setLoading(true);
     await new Promise(r => setTimeout(r, 800)); // simulate auth
-    const success = login(email, password);
+    const success = login(effectiveEmail, effectivePassword);
     if (success) {
       navigate('/app/dashboard');
     } else {
@@ -27,11 +29,35 @@ export default function Login() {
     setLoading(false);
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performLogin();
+  };
+
   const fillDemo = () => {
     setEmail(DEMO_CREDENTIALS.email);
     setPassword(DEMO_CREDENTIALS.password);
     setError('');
   };
+
+  const demoHandlers = useMemo(() => ({
+    LOGIN_FILL_DEMO: async () => {
+      setEmail(DEMO_CREDENTIALS.email);
+      setPassword(DEMO_CREDENTIALS.password);
+      setError('');
+    },
+    LOGIN_SUBMIT_DEMO: async () => {
+      if (!email || !password) {
+        setEmail(DEMO_CREDENTIALS.email);
+        setPassword(DEMO_CREDENTIALS.password);
+        await performLogin(DEMO_CREDENTIALS.email, DEMO_CREDENTIALS.password);
+        return;
+      }
+      await performLogin();
+    },
+  }), [email, password]);
+
+  useDemoStageBindings('/login', demoHandlers);
 
   return (
     <div style={{
@@ -129,7 +155,7 @@ export default function Login() {
           <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Sign in to your network intelligence platform</p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }} data-demo-anchor="demo-login-form">
           {/* Email */}
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>

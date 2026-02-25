@@ -1,6 +1,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { OTIF_TREND, OTIF_BY_SEGMENT } from '../../data/otif';
 import { GlassCard } from '../ui/GlassCard';
+import { isHeadlessRuntime } from '../../utils/runtime';
 
 interface OtifTrendChartProps {
   segment?: 'Total' | 'Dental' | 'AnimalHealth';
@@ -25,6 +26,40 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export function OtifTrendChart({ height = 220, showTitle = true }: OtifTrendChartProps) {
+  if (isHeadlessRuntime()) {
+    const recent = OTIF_TREND.slice(-4);
+    return (
+      <GlassCard style={{ height: '100%' }}>
+        {showTitle && (
+          <div style={{ marginBottom: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'white' }}>OTIF Performance Trend</h3>
+            <p style={{ margin: 0, fontSize: 11, color: '#64748b', marginTop: 2 }}>Headless fallback mode</p>
+          </div>
+        )}
+        <div style={{ display: 'grid', gap: 8, minHeight: height - 20 }}>
+          {recent.map((point) => (
+            <div
+              key={point.month}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                background: '#1a2840',
+                border: '1px solid #2e4168',
+                borderRadius: 8,
+                padding: '8px 10px',
+              }}
+            >
+              <span style={{ color: '#94a3b8', fontSize: 11 }}>{point.month}</span>
+              <span style={{ color: '#00C2A8', fontSize: 12, fontWeight: 700 }}>
+                {(point.otifPct * 100).toFixed(2)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+    );
+  }
+
   const totalData = OTIF_TREND.map(d => ({
     month: d.month.slice(2),
     Total: d.otifPct,

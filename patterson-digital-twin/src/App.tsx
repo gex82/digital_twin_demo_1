@@ -11,6 +11,7 @@ import AiInsightEngine from './pages/ai-engine/AiInsightEngine';
 import CostToServe from './pages/cost-to-serve/CostToServe';
 import ServiceLevel from './pages/service-level/ServiceLevel';
 import Reports from './pages/reports/Reports';
+import { DemoOverlay } from './components/demo/DemoOverlay';
 
 function AuthGuard({ children }: { children: ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
@@ -43,6 +44,7 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <DemoOverlay />
     </BrowserRouter>
   );
 }

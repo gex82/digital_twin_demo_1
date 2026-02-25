@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Download, Share2, Printer, Check } from 'lucide-react';
 import { useScenarioStore } from '../../store/scenarioStore';
 import { NETWORK_KPIS } from '../../data/kpis';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { StatusPill } from '../../components/ui/StatusPill';
 import { formatCurrency } from '../../utils/formatters';
+import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
 
 const BLUE = '#006EFF';
 const TEAL = '#00C2A8';
@@ -49,6 +50,7 @@ export default function Reports() {
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
   const [copyMsg, setCopyMsg] = useState('');
   const [shareMsg, setShareMsg] = useState('');
+  const [artifactMsg, setArtifactMsg] = useState('');
 
   const completeScenarios = scenarios.filter(s => s.result);
 
@@ -74,6 +76,33 @@ export default function Reports() {
     { label: 'Cost/Order', value: '$14.82', delta: '-1.3%' },
     { label: 'Utilization', value: '78.0%', delta: '+1pp' },
   ];
+
+  function selectScenarioPack(scenarioId: string) {
+    setSelectedScenarioId(scenarioId);
+    setSelectedReport('scenario');
+  }
+
+  function generatePackArtifact(scenarioName: string) {
+    setArtifactMsg(`Generated pack artifact: ${scenarioName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`);
+    window.setTimeout(() => setArtifactMsg(''), 3200);
+  }
+
+  useDemoStageBindings('/app/reports', useMemo(() => ({
+    REPORT_SELECT_SCENARIO_PACK: async () => {
+      const bestScenario = scenarios
+        .filter((scenario) => scenario.result)
+        .sort((a, b) => (b.result?.annualSavingsUSD ?? 0) - (a.result?.annualSavingsUSD ?? 0))[0];
+      if (!bestScenario) return;
+      selectScenarioPack(bestScenario.id);
+    },
+    REPORT_GENERATE_EXPORT: async () => {
+      const active = selectedScenarioId
+        ? scenarios.find((scenario) => scenario.id === selectedScenarioId)
+        : scenarios.find((scenario) => scenario.result);
+      if (!active) return;
+      generatePackArtifact(active.name);
+    },
+  }), [scenarios, selectedScenarioId]));
 
   function downloadJson() {
     const data = activeScenario ?? { kpis: NETWORK_KPIS, generatedAt: new Date().toISOString() };
@@ -118,7 +147,7 @@ export default function Reports() {
             completeScenarios.map(s => (
               <div
                 key={s.id}
-                onClick={() => { setSelectedScenarioId(s.id); setSelectedReport('scenario'); }}
+                onClick={() => selectScenarioPack(s.id)}
                 style={{
                   padding: '8px 10px', cursor: 'pointer', borderRadius: 6, marginBottom: 4,
                   background: selectedScenarioId === s.id ? `${BLUE}15` : SURFACE2,
@@ -130,7 +159,11 @@ export default function Reports() {
                   <StatusPill status={s.status} size="sm" />
                 </div>
                 <button
-                  onClick={e => e.stopPropagation()}
+                  onClick={e => {
+                    e.stopPropagation();
+                    selectScenarioPack(s.id);
+                    generatePackArtifact(s.name);
+                  }}
                   style={{ fontSize: 10, color: BLUE, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                 >
                   Generate Pack →
@@ -187,6 +220,7 @@ export default function Reports() {
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
             {copyMsg && <span style={{ color: GREEN, fontSize: 11, alignSelf: 'center' }}>{copyMsg}</span>}
             {shareMsg && <span style={{ color: TEAL, fontSize: 10, alignSelf: 'center', maxWidth: 240 }}>{shareMsg}</span>}
+            {artifactMsg && <span style={{ color: '#93c5fd', fontSize: 10, alignSelf: 'center', maxWidth: 320 }}>{artifactMsg}</span>}
             <button onClick={downloadJson} style={{ display: 'flex', alignItems: 'center', gap: 5, background: SURFACE2, border: `1px solid ${BORDER}`, color: '#94a3b8', borderRadius: 6, padding: '5px 10px', fontSize: 11, cursor: 'pointer' }}>
               <Download size={12} /> Export JSON
             </button>
@@ -207,7 +241,7 @@ export default function Reports() {
           <div style={{ maxWidth: 760, margin: '0 auto' }}>
 
             {/* Document preview */}
-            <div style={{ background: '#fff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.4)', marginBottom: 20 }}>
+            <div style={{ background: '#fff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.4)', marginBottom: 20 }} data-demo-anchor="demo-reports-preview">
               {/* Report header band */}
               <div style={{ background: 'linear-gradient(135deg, #0A1628, #006EFF)', padding: '20px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>

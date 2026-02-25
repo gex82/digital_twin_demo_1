@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
   Background, Controls, MiniMap,
   addEdge, useNodesState, useEdgesState,
@@ -10,6 +10,8 @@ import { Map, LayoutGrid, Layers, Plus, Save, X, Info } from 'lucide-react';
 import { PRIMARY_FACILITIES, REGIONAL_HUBS } from '../../data/facilities';
 import { nodeTypes } from './custom-nodes';
 import type { Facility } from '../../types';
+import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
+import type { DemoActionHandler } from '../../types/demo';
 
 const BLUE = '#006EFF';
 const TEAL = '#00C2A8';
@@ -26,6 +28,14 @@ const MODE_COLORS: Record<string, string> = {
   TL: PURPLE,
   SelfFleet: AMBER,
 };
+
+const SHORT_NAME_TO_ID: Record<string, string> = [...PRIMARY_FACILITIES, ...REGIONAL_HUBS].reduce<Record<string, string>>(
+  (map, facility) => {
+    map[facility.shortName] = facility.id;
+    return map;
+  },
+  {}
+);
 
 // Convert lat/lng to canvas coordinates
 function geoToCanvas(lat: number, lng: number, W = 1200, H = 620): { x: number; y: number } {
@@ -87,8 +97,8 @@ const LANE_DEFS = [
 
 const INITIAL_EDGES: Edge[] = LANE_DEFS.map(({ from, to, mode, vol }) => ({
   id: `${from}-${to}`,
-  source: from,
-  target: to,
+  source: SHORT_NAME_TO_ID[from] ?? from,
+  target: SHORT_NAME_TO_ID[to] ?? to,
   style: { stroke: MODE_COLORS[mode] ?? BLUE, strokeWidth: vol * 0.8, opacity: 0.7 },
   markerEnd: { type: MarkerType.ArrowClosed, color: MODE_COLORS[mode] ?? BLUE, width: 12, height: 12 },
   data: { mode, volumeFactor: vol },
@@ -106,6 +116,7 @@ export default function NetworkBuilder() {
   const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [facilityOverrides, setFacilityOverrides] = useState<Record<string, { capacity: number; cost: number }>>({});
   const [showFlows, setShowFlows] = useState(true);
   const [showCoverage, setShowCoverage] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
@@ -166,6 +177,55 @@ export default function NetworkBuilder() {
   const selectedFacility = selectedNode
     ? PRIMARY_FACILITIES.find(f => f.id === selectedNode.id)
     : null;
+  const selectedFacilityProfile = selectedFacility
+    ? {
+        ...selectedFacility,
+        dailyOrderCapacity: facilityOverrides[selectedFacility.id]?.capacity ?? selectedFacility.dailyOrderCapacity,
+        handlingCostPerOrder: facilityOverrides[selectedFacility.id]?.cost ?? selectedFacility.handlingCostPerOrder,
+      }
+    : null;
+
+  const demoHandlers: Record<string, DemoActionHandler> = useMemo(() => ({
+    NETWORK_SELECT_CONSTRAINED_FC: async (action) => {
+      const payloadId = typeof action.payload?.facilityId === 'string' ? action.payload.facilityId : 'FC-HBG-003';
+      const nodeId = nodes.find((node) => node.id === payloadId)
+        ? payloadId
+        : SHORT_NAME_TO_ID[payloadId] ?? 'FC-HBG-003';
+      const target = nodes.find((node) => node.id === nodeId) ?? null;
+      if (!target) return;
+      setSelectedNode(target);
+      setRightPanelOpen(true);
+      setSaveMsg(`Focused ${target.data.shortName} constraint`);
+      window.setTimeout(() => setSaveMsg(''), 1800);
+    },
+    NETWORK_APPLY_TEMP_OVERRIDE: async (action) => {
+      const fallbackId = selectedNode?.id ?? 'FC-HBG-003';
+      const payload = action.payload ?? {};
+      const capacity = typeof payload.capacity === 'number' ? payload.capacity : 9100;
+      const cost = typeof payload.cost === 'number' ? payload.cost : 4.15;
+      setFacilityOverrides((state) => ({ ...state, [fallbackId]: { capacity, cost } }));
+      setNodes((currentNodes) =>
+        currentNodes.map((node) => {
+          if (node.id !== fallbackId) return node;
+          const sourceFacility = PRIMARY_FACILITIES.find((facility) => facility.id === fallbackId);
+          if (!sourceFacility) return node;
+          const utilizationPct = Math.min(0.99, sourceFacility.currentDailyOrders / capacity);
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              utilizationPct,
+              dailyOrderCapacity: capacity,
+            },
+          };
+        })
+      );
+      setSaveMsg('Demo override applied ✓');
+      window.setTimeout(() => setSaveMsg(''), 2200);
+    },
+  }), [nodes, selectedNode, setNodes]);
+
+  useDemoStageBindings('/app/network', demoHandlers);
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden', background: '#0A1628' }}>
@@ -274,7 +334,7 @@ export default function NetworkBuilder() {
         </div>
 
         {/* React Flow */}
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1 }} data-demo-anchor="demo-network-canvas">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -324,14 +384,14 @@ export default function NetworkBuilder() {
                 <div style={{ marginBottom: 14 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                     <span style={{ color: '#64748b', fontSize: 11 }}>Utilization</span>
-                    <span style={{ color: selectedFacility.utilizationPct >= 0.85 ? '#f59e0b' : '#10b981', fontSize: 11, fontWeight: 700 }}>
-                      {(selectedFacility.utilizationPct * 100).toFixed(0)}%
+                    <span style={{ color: (selectedFacilityProfile ?? selectedFacility).utilizationPct >= 0.85 ? '#f59e0b' : '#10b981', fontSize: 11, fontWeight: 700 }}>
+                      {(((selectedFacilityProfile ?? selectedFacility).utilizationPct) * 100).toFixed(0)}%
                     </span>
                   </div>
                   <div style={{ background: SURFACE2, borderRadius: 3, height: 6, overflow: 'hidden' }}>
                     <div style={{
-                      height: '100%', width: `${selectedFacility.utilizationPct * 100}%`,
-                      background: selectedFacility.utilizationPct >= 0.85
+                      height: '100%', width: `${(selectedFacilityProfile ?? selectedFacility).utilizationPct * 100}%`,
+                      background: (selectedFacilityProfile ?? selectedFacility).utilizationPct >= 0.85
                         ? 'linear-gradient(90deg, #f59e0b, #ef4444)'
                         : `linear-gradient(90deg, ${BLUE}, ${TEAL})`,
                       borderRadius: 3,
@@ -341,8 +401,8 @@ export default function NetworkBuilder() {
 
                 <InfoRow label="City" value={`${selectedFacility.city}, ${selectedFacility.state}`} />
                 <InfoRow label="Square Footage" value={`${(selectedFacility.squareFootage / 1000).toFixed(0)}K sqft`} />
-                <InfoRow label="Daily Capacity" value={`${selectedFacility.dailyOrderCapacity.toLocaleString()} orders`} />
-                <InfoRow label="Cost/Order" value={`$${selectedFacility.handlingCostPerOrder.toFixed(2)}`} />
+                <InfoRow label="Daily Capacity" value={`${(selectedFacilityProfile ?? selectedFacility).dailyOrderCapacity.toLocaleString()} orders`} />
+                <InfoRow label="Cost/Order" value={`$${(selectedFacilityProfile ?? selectedFacility).handlingCostPerOrder.toFixed(2)}`} />
                 <InfoRow label="Segment" value={selectedFacility.segment} />
                 {selectedFacility.hasGTP && <InfoRow label="GTP Automation" value="Yes ✓" valueColor="#10b981" />}
                 {selectedFacility.hasVoicePicking && <InfoRow label="Voice Pick" value="Yes ✓" valueColor="#10b981" />}
@@ -355,14 +415,32 @@ export default function NetworkBuilder() {
                   <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 3 }}>Capacity Override</label>
                   <input
                     type="number"
-                    defaultValue={selectedFacility.dailyOrderCapacity}
+                    value={facilityOverrides[selectedFacility.id]?.capacity ?? selectedFacility.dailyOrderCapacity}
+                    onChange={(event) =>
+                      setFacilityOverrides((state) => ({
+                        ...state,
+                        [selectedFacility.id]: {
+                          capacity: Number(event.target.value),
+                          cost: state[selectedFacility.id]?.cost ?? selectedFacility.handlingCostPerOrder,
+                        },
+                      }))
+                    }
                     style={{ width: '100%', background: SURFACE2, border: `1px solid ${BORDER}`, borderRadius: 5, padding: '5px 8px', color: '#e2e8f0', fontSize: 12, marginBottom: 8, boxSizing: 'border-box', outline: 'none' }}
                   />
                   <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 3 }}>Cost/Order Override ($)</label>
                   <input
                     type="number"
                     step="0.01"
-                    defaultValue={selectedFacility.handlingCostPerOrder}
+                    value={facilityOverrides[selectedFacility.id]?.cost ?? selectedFacility.handlingCostPerOrder}
+                    onChange={(event) =>
+                      setFacilityOverrides((state) => ({
+                        ...state,
+                        [selectedFacility.id]: {
+                          capacity: state[selectedFacility.id]?.capacity ?? selectedFacility.dailyOrderCapacity,
+                          cost: Number(event.target.value),
+                        },
+                      }))
+                    }
                     style={{ width: '100%', background: SURFACE2, border: `1px solid ${BORDER}`, borderRadius: 5, padding: '5px 8px', color: '#e2e8f0', fontSize: 12, marginBottom: 8, boxSizing: 'border-box', outline: 'none' }}
                   />
                 </div>

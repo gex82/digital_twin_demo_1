@@ -1,5 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle, BarChart2, Network, Brain, Shield, Zap, Globe, TrendingDown, Activity } from 'lucide-react';
+import { useDemoStore } from '../store/demoStore';
+import { useDemoStageBindings } from '../hooks/useDemoStageBindings';
+import { useShallow } from 'zustand/react/shallow';
 
 const FEATURES = [
   { icon: Network, title: 'Network Modeling', desc: 'Model FCs, hubs, satellites, cross-docks, and all transportation lanes with real-world constraints and costs.' },
@@ -21,6 +24,38 @@ const TECH_STACK = ['SAP EWM', 'SAP ERP', 'Azure Integration Services', 'UPS · 
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { isActive, runState, startDemo, resumeDemo, restartDemo } = useDemoStore(
+    useShallow((state) => ({
+      isActive: state.isActive,
+      runState: state.runState,
+      startDemo: state.startDemo,
+      resumeDemo: state.resumeDemo,
+      restartDemo: state.restartDemo,
+    }))
+  );
+
+  function handleDemoStart() {
+    if (!isActive) {
+      if (runState === 'paused') {
+        resumeDemo();
+        return;
+      }
+      startDemo();
+      return;
+    }
+    if (runState === 'completed') {
+      restartDemo();
+      return;
+    }
+    resumeDemo();
+  }
+
+  const demoLabel = !isActive
+    ? (runState === 'paused' ? 'Resume Demo' : 'Start Demo')
+    : runState === 'completed'
+      ? 'Restart Demo'
+      : 'Resume Demo';
+  useDemoStageBindings('/');
 
   return (
     <div style={{ background: '#0A1628', minHeight: '100vh', color: 'white', fontFamily: 'Inter, sans-serif' }}>
@@ -45,6 +80,12 @@ export default function Landing() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={handleDemoStart}
+            style={{ background: 'rgba(0,194,168,0.12)', border: '1px solid rgba(0,194,168,0.32)', borderRadius: 8, color: '#00C2A8', padding: '8px 20px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+          >
+            {demoLabel}
+          </button>
           <button
             onClick={() => navigate('/login')}
             style={{ background: 'transparent', border: '1px solid #2e4168', borderRadius: 8, color: '#94a3b8', padding: '8px 20px', cursor: 'pointer', fontSize: 13 }}
@@ -105,7 +146,8 @@ export default function Landing() {
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button
-              onClick={() => navigate('/login')}
+              data-demo-anchor="demo-landing-start"
+              onClick={handleDemoStart}
               style={{
                 background: 'linear-gradient(135deg, #006EFF, #0052CC)',
                 border: 'none', borderRadius: 10,
@@ -115,7 +157,7 @@ export default function Landing() {
                 boxShadow: '0 0 30px rgba(0,110,255,0.3)',
               }}
             >
-              Launch Demo Platform <ArrowRight size={18} />
+              {demoLabel} <ArrowRight size={18} />
             </button>
             <button
               onClick={() => navigate('/login')}

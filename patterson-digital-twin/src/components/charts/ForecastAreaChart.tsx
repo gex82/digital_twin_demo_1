@@ -1,5 +1,6 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { GlassCard } from '../ui/GlassCard';
+import { isHeadlessRuntime } from '../../utils/runtime';
 
 // Synthetic demand forecast data
 const FORECAST_DATA = [
@@ -14,6 +15,41 @@ const FORECAST_DATA = [
 ];
 
 export function ForecastAreaChart({ height = 220 }: { height?: number }) {
+  if (isHeadlessRuntime()) {
+    return (
+      <GlassCard style={{ height: '100%' }}>
+        <div style={{ marginBottom: 16 }}>
+          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'white' }}>Demand Forecast (K Orders/Day)</h3>
+          <p style={{ margin: 0, fontSize: 11, color: '#64748b', marginTop: 2 }}>Headless fallback mode</p>
+        </div>
+        <div style={{ display: 'grid', gap: 8, minHeight: height - 20 }}>
+          {FORECAST_DATA.slice(-4).map((row) => (
+            <div
+              key={row.period}
+              style={{
+                background: '#1a2840',
+                border: '1px solid #2e4168',
+                borderRadius: 8,
+                padding: '8px 10px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ color: '#94a3b8', fontSize: 11 }}>{row.period}</span>
+                <span style={{ color: row.forecast ? '#f59e0b' : '#64748b', fontSize: 10 }}>
+                  {row.forecast ? 'Forecast' : 'Actual'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#3389FF', fontSize: 11 }}>Dental: {row.dental.toFixed(1)}</span>
+                <span style={{ color: '#00C2A8', fontSize: 11 }}>Animal: {row.animalHealth.toFixed(1)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+    );
+  }
+
   return (
     <GlassCard style={{ height: '100%' }}>
       <div style={{ marginBottom: 16 }}>

@@ -1,6 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Brain, Send, Pin, ChevronRight, Loader2, Database } from 'lucide-react';
 import { useAiStore } from '../../store/aiStore';
+import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
+import type { AiRecommendation } from '../../types';
+import { useShallow } from 'zustand/react/shallow';
 
 const BLUE = '#006EFF';
 const TEAL = '#00C2A8';
@@ -49,12 +52,52 @@ const WELCOME_MSG = {
 };
 
 export default function AiInsightEngine() {
-  const { messages, isThinking, isTyping, typingText, pinnedInsights, sendMessage } = useAiStore();
+  const {
+    messages,
+    isThinking,
+    isTyping,
+    typingText,
+    pinnedInsights,
+    sendMessage,
+    sendMessageAsync,
+    pinInsight,
+    createScenarioFromRecommendation,
+  } = useAiStore(
+    useShallow((state) => ({
+      messages: state.messages,
+      isThinking: state.isThinking,
+      isTyping: state.isTyping,
+      typingText: state.typingText,
+      pinnedInsights: state.pinnedInsights,
+      sendMessage: state.sendMessage,
+      sendMessageAsync: state.sendMessageAsync,
+      pinInsight: state.pinInsight,
+      createScenarioFromRecommendation: state.createScenarioFromRecommendation,
+    }))
+  );
   const [input, setInput] = useState('');
   const [thinkingLineIdx, setThinkingLineIdx] = useState(0);
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [displayMessages, setDisplayMessages] = useState(messages.length === 0 ? [WELCOME_MSG] : messages);
+
+  useDemoStageBindings('/app/ai', useMemo(() => ({
+    AI_SEND_STAGE_PROMPT: async (action) => {
+      const payloadText = typeof action.payload?.text === 'string'
+        ? action.payload.text
+        : 'Summarize the best next move balancing cost and OTIF risk.';
+      await sendMessageAsync(payloadText);
+    },
+    AI_PIN_TOP_RECOMMENDATION: async () => {
+      const latestAssistant = [...useAiStore.getState().messages]
+        .reverse()
+        .find((message) => message.role === 'assistant' && (message.recommendations?.length ?? 0) > 0);
+      const topRecommendation = latestAssistant?.recommendations?.[0];
+      if (!topRecommendation) return;
+      pinInsight(topRecommendation);
+      createScenarioFromRecommendation(topRecommendation.title);
+    },
+  }), [createScenarioFromRecommendation, pinInsight, sendMessageAsync]));
 
   // Seed welcome on first load
   useEffect(() => {
@@ -155,7 +198,7 @@ export default function AiInsightEngine() {
       </div>
 
       {/* CENTER: Chat */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, borderRight: `1px solid ${BORDER}` }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, borderRight: `1px solid ${BORDER}` }} data-demo-anchor="demo-ai-chat">
         {/* Chat header */}
         <div style={{ padding: '12px 20px', borderBottom: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <div style={{ width: 34, height: 34, borderRadius: '50%', background: `linear-gradient(135deg, ${BLUE}, ${TEAL})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -198,7 +241,7 @@ export default function AiInsightEngine() {
               {/* Recommendations */}
               {msg.recommendations && msg.recommendations.length > 0 && (
                 <div style={{ maxWidth: '85%', marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {msg.recommendations.map((rec: any, i: number) => (
+                  {msg.recommendations.map((rec: AiRecommendation, i: number) => (
                     <div
                       key={i}
                       style={{ background: SURFACE2, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '10px 12px', borderLeft: `3px solid ${TEAL}` }}
@@ -212,9 +255,20 @@ export default function AiInsightEngine() {
                         )}
                       </div>
                       <p style={{ color: '#94a3b8', fontSize: 11, margin: 0, lineHeight: 1.5 }}>{rec.detail}</p>
-                      <button style={{ marginTop: 6, background: `${BLUE}20`, border: `1px solid ${BLUE}40`, color: BLUE, borderRadius: 4, padding: '3px 8px', fontSize: 10, cursor: 'pointer' }}>
-                        Create Scenario →
-                      </button>
+                      <div style={{ marginTop: 7, display: 'flex', gap: 6 }}>
+                        <button
+                          onClick={() => pinInsight(rec)}
+                          style={{ background: `${TEAL}20`, border: `1px solid ${TEAL}40`, color: TEAL, borderRadius: 4, padding: '3px 8px', fontSize: 10, cursor: 'pointer' }}
+                        >
+                          Pin
+                        </button>
+                        <button
+                          onClick={() => createScenarioFromRecommendation(rec.title)}
+                          style={{ background: `${BLUE}20`, border: `1px solid ${BLUE}40`, color: BLUE, borderRadius: 4, padding: '3px 8px', fontSize: 10, cursor: 'pointer' }}
+                        >
+                          Create Scenario →
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -314,9 +368,10 @@ export default function AiInsightEngine() {
               <p style={{ fontSize: 11, margin: 0 }}>Pin insights from the chat by clicking the pin icon on any AI response</p>
             </div>
           ) : (
-            pinnedInsights.map((insight: any) => (
-              <div key={insight.id} style={{ background: SURFACE2, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 10, marginBottom: 8 }}>
-                <p style={{ color: '#94a3b8', fontSize: 11, margin: 0, lineHeight: 1.5 }}>{insight.content}</p>
+            pinnedInsights.map((insight) => (
+              <div key={insight.title} style={{ background: SURFACE2, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                <div style={{ color: '#e2e8f0', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>{insight.title}</div>
+                <p style={{ color: '#94a3b8', fontSize: 11, margin: 0, lineHeight: 1.5 }}>{insight.detail}</p>
               </div>
             ))
           )}

@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { DollarSign, TrendingDown, Zap, ChevronUp, ChevronDown, ArrowRight } from 'lucide-react';
 import { COST_BUCKETS, SEGMENT_COST_SPLITS, TOP_COST_OPPORTUNITIES } from '../../data/costToServe';
 import { CostWaterfallChart } from '../../components/charts/CostWaterfallChart';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { formatCurrency } from '../../utils/formatters';
+import { useScenarioStore } from '../../store/scenarioStore';
+import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
+import { useShallow } from 'zustand/react/shallow';
 
 const BLUE = '#006EFF';
 const TEAL = '#00C2A8';
@@ -44,6 +47,12 @@ export default function CostToServe() {
   const [sortCol, setSortCol] = useState<'annualCostUSD' | 'pctOfTotal' | 'costPerOrder' | 'trend3moPct'>('annualCostUSD');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [laneModalLane, setLaneModalLane] = useState<null | typeof TOP_LANES[0]>(null);
+  const { createScenarioFromTemplate, setActiveScenario } = useScenarioStore(
+    useShallow((state) => ({
+      createScenarioFromTemplate: state.createScenarioFromTemplate,
+      setActiveScenario: state.setActiveScenario,
+    }))
+  );
 
   function toggleSort(col: typeof sortCol) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -59,6 +68,32 @@ export default function CostToServe() {
   const SortIcon = ({ col }: { col: typeof sortCol }) => sortCol === col
     ? (sortDir === 'asc' ? <ChevronUp size={11} style={{ color: BLUE }} /> : <ChevronDown size={11} style={{ color: BLUE }} />)
     : null;
+
+  function modelLaneInScenario(lane: typeof TOP_LANES[0]) {
+    const scenarioId = createScenarioFromTemplate('SCN-003', {
+      name: `Lane Optimization: ${lane.origin.split(' ')[0]} -> ${lane.dest}`,
+      description: `Model lane carrier shift for ${lane.origin} to ${lane.dest} (${lane.mode}).`,
+      assumptionNotes: `Current ${lane.carrier} at $${lane.costPerOrder.toFixed(2)}/order and ${lane.otif.toFixed(1)}% OTIF.`,
+      tags: ['Lane Optimization', 'Cost-to-Serve', lane.mode],
+      createdBy: 'Cost-to-Serve',
+    });
+    setActiveScenario(scenarioId);
+  }
+
+  useDemoStageBindings('/app/cost-to-serve', useMemo(() => ({
+    CTS_OPEN_TOP_LANE: async (action) => {
+      const laneIndex = typeof action.payload?.laneIndex === 'number' ? action.payload.laneIndex : 0;
+      setTab('By Lane');
+      setLaneModalLane(TOP_LANES[Math.max(0, Math.min(laneIndex, TOP_LANES.length - 1))]);
+    },
+    CTS_PUSH_TO_SCENARIO: async () => {
+      if (laneModalLane) {
+        modelLaneInScenario(laneModalLane);
+        return;
+      }
+      modelLaneInScenario(TOP_LANES[0]);
+    },
+  }), [laneModalLane]));
 
   return (
     <div style={{ padding: 24, overflowY: 'auto', height: 'calc(100vh - 64px)', boxSizing: 'border-box' }}>
@@ -217,7 +252,11 @@ export default function CostToServe() {
               </thead>
               <tbody>
                 {TOP_LANES.map((lane, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? 'transparent' : `${SURFACE2}50` }}>
+                  <tr
+                    key={i}
+                    data-demo-anchor={i === 0 ? 'demo-cts-top-lane' : undefined}
+                    style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? 'transparent' : `${SURFACE2}50` }}
+                  >
                     <td style={{ padding: '9px 14px', color: '#e2e8f0', fontSize: 12, fontWeight: 500 }}>{lane.origin}</td>
                     <td style={{ padding: '9px 14px', color: '#94a3b8', fontSize: 12 }}>{lane.dest}</td>
                     <td style={{ padding: '9px 14px', color: '#94a3b8', fontSize: 12 }}>{lane.vol.toLocaleString()}</td>
@@ -265,7 +304,10 @@ export default function CostToServe() {
                   </p>
                 </div>
                 <button
-                  onClick={() => setLaneModalLane(null)}
+                  onClick={() => {
+                    modelLaneInScenario(laneModalLane);
+                    setLaneModalLane(null);
+                  }}
                   style={{ background: BLUE, border: 'none', color: '#fff', borderRadius: 6, padding: '8px 16px', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
                 >
                   Model in Scenario
@@ -310,6 +352,10 @@ export default function CostToServe() {
                 <div style={{ height: '100%', width: `${opp.confidencePct}%`, background: `linear-gradient(90deg, ${BLUE}, ${TEAL})`, borderRadius: 3 }} />
               </div>
               <button
+                onClick={() => {
+                  const lane = TOP_LANES[0];
+                  modelLaneInScenario(lane);
+                }}
                 style={{ display: 'flex', alignItems: 'center', gap: 4, background: `${BLUE}20`, border: `1px solid ${BLUE}40`, color: BLUE, borderRadius: 6, padding: '5px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
               >
                 Model in Scenario <ArrowRight size={11} />

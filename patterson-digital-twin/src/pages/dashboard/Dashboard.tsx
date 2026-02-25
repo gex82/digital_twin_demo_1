@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { AlertTriangle, Info, CheckCircle, XCircle, ArrowRight, TrendingUp } from 'lucide-react';
 import { NetworkMap } from '../../components/map/NetworkMap';
 import { KpiCard } from '../../components/ui/KpiCard';
@@ -11,6 +12,9 @@ import { useScenarioStore } from '../../store/scenarioStore';
 import { formatCurrency, formatPercent } from '../../utils/formatters';
 import { StatusPill } from '../../components/ui/StatusPill';
 import { useNavigate } from 'react-router-dom';
+import { useUiStore } from '../../store/uiStore';
+import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
+import { useShallow } from 'zustand/react/shallow';
 
 const ALERT_ICONS = {
   critical: <XCircle size={14} color="#ef4444" />,
@@ -28,12 +32,36 @@ const ALERT_COLORS = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [focusHealth, setFocusHealth] = useState(false);
+  const [showDecisionRecap, setShowDecisionRecap] = useState(false);
   const { scenarios } = useScenarioStore();
+  const { maskSensitiveCosts, integrationSources, decisionTrail } = useUiStore(
+    useShallow((state) => ({
+      maskSensitiveCosts: state.maskSensitiveCosts,
+      integrationSources: state.integrationSources,
+      decisionTrail: state.decisionTrail,
+    }))
+  );
   const activeScenarios = scenarios.filter(s => s.status === 'Complete' || s.status === 'Approved');
   const approvedScenarios = scenarios.filter(s => s.status === 'Approved' && s.result?.annualSavingsUSD && s.result.annualSavingsUSD > 0);
   const totalSavings = approvedScenarios.reduce((s, scn) => s + (scn.result?.annualSavingsUSD || 0), 0);
 
   const topKpis = NETWORK_KPIS.slice(0, 6);
+  const healthyConnectors = useMemo(
+    () => integrationSources.filter((source) => source.status === 'Healthy').length,
+    [integrationSources]
+  );
+
+  useDemoStageBindings('/app/dashboard', useMemo(() => ({
+    DASHBOARD_FOCUS_HEALTH: async () => {
+      setFocusHealth(true);
+      setShowDecisionRecap(false);
+    },
+    DASHBOARD_SHOW_DECISION_RECAP: async () => {
+      setShowDecisionRecap(true);
+      setFocusHealth(false);
+    },
+  }), []));
 
   const highUtilFCs = PRIMARY_FACILITIES
     .filter(f => f.utilizationPct >= 0.80)
@@ -42,6 +70,69 @@ export default function Dashboard() {
 
   return (
     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* Demo governance card */}
+      <GlassCard>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: 14, alignItems: 'center' }}>
+          <div>
+            <div style={{ color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+              Integration & Governance
+            </div>
+            <div style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600 }}>
+              Connectors healthy: {healthyConnectors}/{integrationSources.length}
+            </div>
+            <div style={{ color: '#64748b', fontSize: 11 }}>
+              Decision trail events: {decisionTrail.length} · Cost masking: {maskSensitiveCosts ? 'On' : 'Off'}
+            </div>
+          </div>
+          <div>
+            <div style={{ color: '#64748b', fontSize: 11, marginBottom: 4 }}>Latency Envelope</div>
+            <div style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 700 }}>
+              {Math.round(integrationSources.reduce((sum, source) => sum + source.latencyMs, 0) / integrationSources.length)}ms avg
+            </div>
+          </div>
+          <div>
+            <div style={{ color: '#64748b', fontSize: 11, marginBottom: 4 }}>Last Decision</div>
+            <div style={{ color: '#94a3b8', fontSize: 11 }}>
+              {decisionTrail.length > 0 ? decisionTrail[decisionTrail.length - 1].step : 'No stage actions recorded yet'}
+            </div>
+          </div>
+        </div>
+      </GlassCard>
+
+      {showDecisionRecap && (
+        <div
+          data-demo-anchor="demo-dashboard-decision-card"
+          style={{
+            background: 'rgba(0,110,255,0.12)',
+            border: '1px solid rgba(0,110,255,0.3)',
+            borderRadius: 10,
+            padding: '12px 16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 16,
+          }}
+        >
+          <div>
+            <div style={{ color: '#93c5fd', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+              Final Demo Recommendation
+            </div>
+            <div style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600 }}>
+              Execute carrier shift now, then sequence automation + consolidation.
+            </div>
+            <div style={{ color: '#94a3b8', fontSize: 11 }}>
+              Projected annual impact: {maskSensitiveCosts ? '***' : formatCurrency(18_800_000)} savings, OTIF +0.3pp.
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/app/reports')}
+            style={{ background: 'rgba(0,110,255,0.2)', border: '1px solid rgba(0,110,255,0.45)', borderRadius: 8, color: '#93c5fd', padding: '7px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}
+          >
+            Open Decision Pack →
+          </button>
+        </div>
+      )}
+
       {/* Scenario banner (if any approved) */}
       {approvedScenarios.length > 0 && (
         <div style={{
@@ -54,7 +145,7 @@ export default function Dashboard() {
             <span style={{ fontSize: 13, color: '#94a3b8' }}>
               <strong style={{ color: 'white' }}>{approvedScenarios.length} scenario{approvedScenarios.length > 1 ? 's' : ''} approved</strong>
               {' · '}
-              <span style={{ color: '#00C2A8' }}>{formatCurrency(totalSavings, true)}/yr</span> in projected savings pending implementation
+              <span style={{ color: '#00C2A8' }}>{maskSensitiveCosts ? '***' : `${formatCurrency(totalSavings, true)}/yr`}</span> in projected savings pending implementation
             </span>
           </div>
           <button
@@ -67,7 +158,18 @@ export default function Dashboard() {
       )}
 
       {/* KPI grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14 }}>
+      <div
+        data-demo-anchor="demo-dashboard-kpi-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(6, 1fr)',
+          gap: 14,
+          border: focusHealth ? '1px solid rgba(0,194,168,0.35)' : '1px solid transparent',
+          borderRadius: 12,
+          padding: focusHealth ? 10 : 0,
+          transition: 'all 0.2s ease',
+        }}
+      >
         {topKpis.map((kpi, i) => (
           <KpiCard key={kpi.id} kpi={kpi} delay={i * 100} />
         ))}
