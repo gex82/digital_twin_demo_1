@@ -12,6 +12,7 @@ import { nodeTypes } from './custom-nodes';
 import type { Facility } from '../../types';
 import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
 import type { DemoActionHandler } from '../../types/demo';
+import { useUiStore } from '../../store/uiStore';
 
 const BLUE = '#006EFF';
 const TEAL = '#00C2A8';
@@ -44,6 +45,10 @@ function geoToCanvas(lat: number, lng: number, W = 1200, H = 620): { x: number; 
   return { x, y };
 }
 
+function coverageRadiusMilesToPx(miles: number): number {
+  return Math.round(Math.max(58, Math.min(112, miles * 0.26)));
+}
+
 function facilityToNode(fc: Facility): Node {
   const pos = geoToCanvas(fc.coordinates[0], fc.coordinates[1]);
   return {
@@ -59,6 +64,9 @@ function facilityToNode(fc: Facility): Node {
       sqft: fc.squareFootage,
       dailyOrderCapacity: fc.dailyOrderCapacity,
       segment: fc.segment,
+      nextDayCoverageRadius: fc.nextDayCoverageRadius,
+      coveragePx: coverageRadiusMilesToPx(fc.nextDayCoverageRadius),
+      showCoverage: false,
     },
   };
 }
@@ -122,6 +130,7 @@ export default function NetworkBuilder() {
   const [saveMsg, setSaveMsg] = useState('');
   const [nodeCounter, setNodeCounter] = useState(0);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const pushToast = useUiStore((state) => state.pushToast);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges(eds => addEdge({
@@ -174,6 +183,26 @@ export default function NetworkBuilder() {
     setEdges(eds => eds.map(e => ({ ...e, style: { ...e.style, opacity: showFlows ? 0.7 : 0 } })));
   }, [showFlows, setEdges]);
 
+  // Toggle coverage visualization layer
+  useEffect(() => {
+    setNodes((currentNodes) =>
+      currentNodes.map((node) =>
+        node.type !== 'fc'
+          ? node
+          : {
+              ...node,
+              data: {
+                ...node.data,
+                showCoverage,
+                coveragePx: coverageRadiusMilesToPx(
+                  typeof node.data.nextDayCoverageRadius === 'number' ? node.data.nextDayCoverageRadius : 280
+                ),
+              },
+            }
+      )
+    );
+  }, [setNodes, showCoverage]);
+
   const selectedFacility = selectedNode
     ? PRIMARY_FACILITIES.find(f => f.id === selectedNode.id)
     : null;
@@ -184,6 +213,21 @@ export default function NetworkBuilder() {
         handlingCostPerOrder: facilityOverrides[selectedFacility.id]?.cost ?? selectedFacility.handlingCostPerOrder,
       }
     : null;
+
+  function runIsolationAnalysis() {
+    if (!selectedFacilityProfile) return;
+    const utilizationPct = Math.round(selectedFacilityProfile.utilizationPct * 100);
+    setSaveMsg(`Isolation run queued for ${selectedFacilityProfile.shortName}...`);
+    pushToast({
+      title: 'Isolation Analysis Executed',
+      message: `${selectedFacilityProfile.shortName} stress profile generated at ${utilizationPct}% utilization.`,
+      tone: utilizationPct >= 85 ? 'warning' : 'info',
+    });
+    window.setTimeout(() => {
+      setSaveMsg(`Isolation complete: ${selectedFacilityProfile.shortName} risk profile updated.`);
+    }, 700);
+    window.setTimeout(() => setSaveMsg(''), 2600);
+  }
 
   const demoHandlers: Record<string, DemoActionHandler> = useMemo(() => ({
     NETWORK_SELECT_CONSTRAINED_FC: async (action) => {
@@ -308,6 +352,7 @@ export default function NetworkBuilder() {
 
           <button
             onClick={() => setShowCoverage(!showCoverage)}
+            data-testid="network-toggle-coverage"
             style={{ display: 'flex', alignItems: 'center', gap: 5, background: showCoverage ? `${TEAL}20` : SURFACE2, border: `1px solid ${showCoverage ? TEAL : BORDER}`, color: showCoverage ? TEAL : '#64748b', borderRadius: 6, padding: '5px 10px', fontSize: 11, cursor: 'pointer' }}
           >
             <LayoutGrid size={12} /> Coverage
@@ -446,6 +491,8 @@ export default function NetworkBuilder() {
                 </div>
 
                 <button
+                  onClick={runIsolationAnalysis}
+                  data-testid="network-run-isolation"
                   style={{ width: '100%', marginTop: 8, padding: '8px', background: `${BLUE}20`, border: `1px solid ${BLUE}`, color: BLUE, borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
                 >
                   Run Isolation Analysis

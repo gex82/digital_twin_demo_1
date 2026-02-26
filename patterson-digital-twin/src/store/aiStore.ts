@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { ChatMessage, AiRecommendation } from '../types';
 import { matchInsightScript, SUGGESTED_PROMPTS } from '../data/aiInsights';
 import { useScenarioStore } from './scenarioStore';
@@ -83,147 +84,9 @@ async function sleep(ms: number): Promise<void> {
   });
 }
 
-export const useAiStore = create<AiState>((set, get) => ({
-  messages: deepClone(INITIAL_MESSAGES),
-  isThinking: false,
-  isTyping: false,
-  typingText: '',
-  pinnedInsights: [],
-  dataSources: deepClone(INITIAL_DATA_SOURCES),
-  suggestedPrompts: SUGGESTED_PROMPTS.slice(0, 4),
-
-  sendMessage: (text) => {
-    void get().sendMessageAsync(text);
-  },
-
-  sendMessageAsync: async (text) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    if (get().isThinking || get().isTyping) return;
-
-    const script = matchInsightScript(trimmed);
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: trimmed,
-      timestamp: new Date().toISOString(),
-    };
-    const assistantMessageId = `assistant-${Date.now()}`;
-    const placeholderAssistantMessage: ChatMessage = {
-      id: assistantMessageId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date().toISOString(),
-      isTyping: true,
-    };
-
-    set((state) => ({
-      messages: [...state.messages, userMessage, placeholderAssistantMessage],
-      isThinking: true,
-      isTyping: false,
-      typingText: '',
-    }));
-
-    for (const step of script.thinkingSteps) {
-      set({ typingText: step });
-      await sleep(180);
-    }
-
-    set({ isThinking: false, isTyping: true, typingText: '' });
-
-    const fullText = script.response;
-    let currentText = '';
-    for (let i = 0; i < fullText.length; i += 1) {
-      const char = fullText[i];
-      currentText += char;
-      set((state) => ({
-        typingText: currentText,
-        messages: state.messages.map((message) =>
-          message.id === assistantMessageId
-            ? { ...message, content: currentText, isTyping: true }
-            : message
-        ),
-      }));
-      const delay = char === '.' || char === '!' || char === '?' ? 28 : char === ',' || char === ':' ? 14 : 9;
-      await sleep(delay);
-    }
-
-    set((state) => ({
-      isThinking: false,
-      isTyping: false,
-      typingText: '',
-      messages: state.messages.map((message) =>
-        message.id === assistantMessageId
-          ? {
-              ...message,
-              content: fullText,
-              isTyping: false,
-              recommendations: script.recommendations,
-              confidenceScore: script.confidenceScore,
-              dataSourcesUsed: script.dataSourcesUsed,
-            }
-          : message
-      ),
-      suggestedPrompts: SUGGESTED_PROMPTS.filter(
-        (prompt) => !prompt.toLowerCase().includes(trimmed.substring(0, 10).toLowerCase())
-      ).slice(0, 4),
-    }));
-  },
-
-  clearConversation: () => {
-    set({
-      messages: deepClone(INITIAL_MESSAGES),
-      isThinking: false,
-      isTyping: false,
-      typingText: '',
-    });
-  },
-
-  pinInsight: (insight) => {
-    set((state) => ({
-      pinnedInsights: [...state.pinnedInsights.filter((item) => item.title !== insight.title), insight],
-    }));
-  },
-
-  unpinInsight: (title) => {
-    set((state) => ({
-      pinnedInsights: state.pinnedInsights.filter((item) => item.title !== title),
-    }));
-  },
-
-  createScenarioFromRecommendation: (recId) => {
-    const normalizedId = recId.trim().toLowerCase();
-    const pinned = get().pinnedInsights;
-    let recommendation =
-      pinned.find((item) => item.title.toLowerCase() === normalizedId) ??
-      pinned.find((item) => item.title.toLowerCase().includes(normalizedId));
-
-    if (!recommendation) {
-      const latestWithRecs = [...get().messages]
-        .reverse()
-        .find((message) => message.role === 'assistant' && (message.recommendations?.length ?? 0) > 0);
-      recommendation =
-        latestWithRecs?.recommendations?.find((item) => item.title.toLowerCase() === normalizedId) ??
-        latestWithRecs?.recommendations?.[0];
-    }
-
-    if (!recommendation) return null;
-
-    const scenarioType = recommendation.scenarioType ?? 'CarrierShift';
-    const templateId = SCENARIO_TEMPLATE_BY_TYPE[scenarioType] ?? 'SCN-003';
-    const scenarioId = useScenarioStore.getState().createScenarioFromTemplate(templateId, {
-      name: `AI: ${recommendation.title}`,
-      description: recommendation.detail,
-      tags: ['AI-Recommendation', 'Demo', recommendation.complexity],
-      createdBy: 'SupplyIQ',
-      assumptionNotes: `Generated from AI recommendation "${recommendation.title}" with ${recommendation.timeToValue} time-to-value.`,
-    });
-    useScenarioStore.getState().setActiveScenario(scenarioId);
-    return scenarioId;
-  },
-
-  resetDemoState: () => {
-    set({
+export const useAiStore = create<AiState>()(
+  persist(
+    (set, get) => ({
       messages: deepClone(INITIAL_MESSAGES),
       isThinking: false,
       isTyping: false,
@@ -231,28 +94,189 @@ export const useAiStore = create<AiState>((set, get) => ({
       pinnedInsights: [],
       dataSources: deepClone(INITIAL_DATA_SOURCES),
       suggestedPrompts: SUGGESTED_PROMPTS.slice(0, 4),
-    });
-  },
 
-  getSnapshot: () => {
-    const state = get();
-    return {
-      messages: deepClone(state.messages),
-      pinnedInsights: deepClone(state.pinnedInsights),
-      suggestedPrompts: [...state.suggestedPrompts],
-      dataSources: deepClone(state.dataSources),
-    };
-  },
+      sendMessage: (text) => {
+        void get().sendMessageAsync(text);
+      },
 
-  restoreSnapshot: (snapshot) => {
-    set({
-      messages: deepClone(snapshot.messages),
-      pinnedInsights: deepClone(snapshot.pinnedInsights),
-      suggestedPrompts: [...snapshot.suggestedPrompts],
-      dataSources: deepClone(snapshot.dataSources),
-      isThinking: false,
-      isTyping: false,
-      typingText: '',
-    });
-  },
-}));
+      sendMessageAsync: async (text) => {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        if (get().isThinking || get().isTyping) return;
+
+        const script = matchInsightScript(trimmed);
+        const userMessage: ChatMessage = {
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: trimmed,
+          timestamp: new Date().toISOString(),
+        };
+        const assistantMessageId = `assistant-${Date.now()}`;
+        const placeholderAssistantMessage: ChatMessage = {
+          id: assistantMessageId,
+          role: 'assistant',
+          content: '',
+          timestamp: new Date().toISOString(),
+          isTyping: true,
+        };
+
+        set((state) => ({
+          messages: [...state.messages, userMessage, placeholderAssistantMessage],
+          isThinking: true,
+          isTyping: false,
+          typingText: '',
+        }));
+
+        for (const step of script.thinkingSteps) {
+          set({ typingText: step });
+          await sleep(180);
+        }
+
+        set({ isThinking: false, isTyping: true, typingText: '' });
+
+        const fullText = script.response;
+        let currentText = '';
+        for (let i = 0; i < fullText.length; i += 1) {
+          const char = fullText[i];
+          currentText += char;
+          set((state) => ({
+            typingText: currentText,
+            messages: state.messages.map((message) =>
+              message.id === assistantMessageId
+                ? { ...message, content: currentText, isTyping: true }
+                : message
+            ),
+          }));
+          const delay = char === '.' || char === '!' || char === '?' ? 28 : char === ',' || char === ':' ? 14 : 9;
+          await sleep(delay);
+        }
+
+        set((state) => ({
+          isThinking: false,
+          isTyping: false,
+          typingText: '',
+          messages: state.messages.map((message) =>
+            message.id === assistantMessageId
+              ? {
+                  ...message,
+                  content: fullText,
+                  isTyping: false,
+                  recommendations: script.recommendations,
+                  confidenceScore: script.confidenceScore,
+                  dataSourcesUsed: script.dataSourcesUsed,
+                }
+              : message
+          ),
+          suggestedPrompts: SUGGESTED_PROMPTS.filter(
+            (prompt) => !prompt.toLowerCase().includes(trimmed.substring(0, 10).toLowerCase())
+          ).slice(0, 4),
+        }));
+      },
+
+      clearConversation: () => {
+        set({
+          messages: deepClone(INITIAL_MESSAGES),
+          isThinking: false,
+          isTyping: false,
+          typingText: '',
+        });
+      },
+
+      pinInsight: (insight) => {
+        set((state) => ({
+          pinnedInsights: [...state.pinnedInsights.filter((item) => item.title !== insight.title), insight],
+        }));
+      },
+
+      unpinInsight: (title) => {
+        set((state) => ({
+          pinnedInsights: state.pinnedInsights.filter((item) => item.title !== title),
+        }));
+      },
+
+      createScenarioFromRecommendation: (recId) => {
+        const normalizedId = recId.trim().toLowerCase();
+        const pinned = get().pinnedInsights;
+        let recommendation =
+          pinned.find((item) => item.title.toLowerCase() === normalizedId) ??
+          pinned.find((item) => item.title.toLowerCase().includes(normalizedId));
+
+        if (!recommendation) {
+          const latestWithRecs = [...get().messages]
+            .reverse()
+            .find((message) => message.role === 'assistant' && (message.recommendations?.length ?? 0) > 0);
+          recommendation =
+            latestWithRecs?.recommendations?.find((item) => item.title.toLowerCase() === normalizedId) ??
+            latestWithRecs?.recommendations?.[0];
+        }
+
+        if (!recommendation) return null;
+
+        const scenarioType = recommendation.scenarioType ?? 'CarrierShift';
+        const templateId = SCENARIO_TEMPLATE_BY_TYPE[scenarioType] ?? 'SCN-003';
+        const scenarioId = useScenarioStore.getState().createScenarioFromTemplate(templateId, {
+          name: `AI: ${recommendation.title}`,
+          description: recommendation.detail,
+          tags: ['AI-Recommendation', 'Demo', recommendation.complexity],
+          createdBy: 'SupplyIQ',
+          assumptionNotes: `Generated from AI recommendation "${recommendation.title}" with ${recommendation.timeToValue} time-to-value.`,
+        });
+        useScenarioStore.getState().setActiveScenario(scenarioId);
+        return scenarioId;
+      },
+
+      resetDemoState: () => {
+        set({
+          messages: deepClone(INITIAL_MESSAGES),
+          isThinking: false,
+          isTyping: false,
+          typingText: '',
+          pinnedInsights: [],
+          dataSources: deepClone(INITIAL_DATA_SOURCES),
+          suggestedPrompts: SUGGESTED_PROMPTS.slice(0, 4),
+        });
+      },
+
+      getSnapshot: () => {
+        const state = get();
+        return {
+          messages: deepClone(state.messages),
+          pinnedInsights: deepClone(state.pinnedInsights),
+          suggestedPrompts: [...state.suggestedPrompts],
+          dataSources: deepClone(state.dataSources),
+        };
+      },
+
+      restoreSnapshot: (snapshot) => {
+        set({
+          messages: deepClone(snapshot.messages),
+          pinnedInsights: deepClone(snapshot.pinnedInsights),
+          suggestedPrompts: [...snapshot.suggestedPrompts],
+          dataSources: deepClone(snapshot.dataSources),
+          isThinking: false,
+          isTyping: false,
+          typingText: '',
+        });
+      },
+    }),
+    {
+      name: 'patterson-ai-state',
+      partialize: (state) => ({
+        messages: state.messages,
+        pinnedInsights: state.pinnedInsights,
+        suggestedPrompts: state.suggestedPrompts,
+        dataSources: state.dataSources,
+      }),
+      merge: (persisted, current) => {
+        const typed = persisted as Partial<AiStoreSnapshot>;
+        return {
+          ...current,
+          messages: typed.messages && typed.messages.length > 0 ? typed.messages : current.messages,
+          pinnedInsights: typed.pinnedInsights ?? current.pinnedInsights,
+          suggestedPrompts: typed.suggestedPrompts ?? current.suggestedPrompts,
+          dataSources: typed.dataSources ?? current.dataSources,
+        };
+      },
+    }
+  )
+);

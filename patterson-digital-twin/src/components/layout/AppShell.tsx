@@ -5,8 +5,14 @@ import { TopBar } from './TopBar';
 import { useAuthStore } from '../../store/authStore';
 import { useUiStore } from '../../store/uiStore';
 
+const LIVE_SNAPSHOT_DATE = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: '2-digit',
+  year: 'numeric',
+}).format(new Date());
+
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
-  '/app/dashboard': { title: 'Network Operations Intelligence', subtitle: 'Live snapshot — Feb 24, 2026 | 13 FCs · 187,400 daily orders' },
+  '/app/dashboard': { title: 'Network Operations Intelligence', subtitle: `Live snapshot — ${LIVE_SNAPSHOT_DATE} | 13 FCs · 187,400 daily orders` },
   '/app/network': { title: 'Network Builder', subtitle: 'Interactive fulfillment network design and configuration' },
   '/app/scenarios': { title: 'Scenario Simulator', subtitle: 'What-if analysis · MILP optimization · Side-by-side comparison' },
   '/app/ai': { title: 'Patterson SupplyIQ™', subtitle: 'AI-powered network intelligence and scenario recommendations' },

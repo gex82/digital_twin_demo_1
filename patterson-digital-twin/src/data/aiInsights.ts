@@ -1,5 +1,29 @@
 import type { AiInsightScript } from '../types';
 
+const ANALYSIS_DATE_LONG = new Intl.DateTimeFormat('en-US', {
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'America/Chicago',
+}).format(new Date());
+
+const ANALYSIS_DATE_SHORT = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'America/Chicago',
+}).format(new Date());
+
+const ANALYSIS_TIMESTAMP_UTC = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: 'UTC',
+}).format(new Date());
+
 export const AI_INSIGHTS: AiInsightScript[] = [
   {
     id: 'cost-opportunities',
@@ -10,7 +34,7 @@ export const AI_INSIGHTS: AiInsightScript[] = [
       'Which lanes are most expensive?',
     ],
     thinkingSteps: [
-      'Querying SAP EWM cost telemetry (as of Feb 24, 2026 02:00 UTC)...',
+      `Querying SAP EWM cost telemetry (as of ${ANALYSIS_TIMESTAMP_UTC} UTC)...`,
       'Loading 847 active lane cost profiles...',
       'Cross-referencing carrier rate tables vs. current market rates...',
       'Analyzing FedEx vs. UPS performance delta on Southeast corridors...',
@@ -18,7 +42,7 @@ export const AI_INSIGHTS: AiInsightScript[] = [
       'Running MILP cost minimization heuristic (4,821 variables)...',
       'Ranking opportunities by NPV and implementation complexity...',
     ],
-    response: `**Network Cost Analysis – February 24, 2026**
+    response: `**Network Cost Analysis – ${ANALYSIS_DATE_LONG}**
 
 Your network is generating **$847.3M** in total annual cost-to-serve, representing **$14.82 per order** — up 3.1% year-over-year. I've identified three actionable opportunities totaling **$17.9M** in annualized savings that can be executed within 12 months.
 
@@ -197,7 +221,7 @@ The throughput increase creates the capacity headroom needed to safely absorb Co
       'Cross-referencing UPS performance on identical corridors...',
       'Checking contract expiration dates and renegotiation windows...',
     ],
-    response: `**Carrier Performance Intelligence Report – Feb 24, 2026**
+    response: `**Carrier Performance Intelligence Report – ${ANALYSIS_DATE_SHORT}**
 
 I've identified two active carrier performance risks and one contract opportunity that together represent **$11.2M in actionable value**.
 
@@ -289,6 +313,68 @@ Pre-position +5 days dental instrument inventory at Dallas FC before winter seas
     confidenceScore: 0.84,
   },
   {
+    id: 'segment-compare',
+    triggerKeywords: ['dental', 'animal', 'segment', 'compare', 'comparison', 'mix', 'split'],
+    promptExamples: [
+      'How do Dental vs. Animal Health compare?',
+      'Compare segment performance between Dental and Animal Health',
+      'Show the Dental and Animal Health split',
+    ],
+    thinkingSteps: [
+      'Pulling segment KPI rollups from SAP EWM and cost ledger...',
+      'Reconciling daily order mix and OTIF deltas by segment...',
+      'Computing cost-to-serve and coverage differences...',
+      'Summarizing segment-specific risks and opportunities...',
+    ],
+    response: `**Dental vs. Animal Health Comparison – ${ANALYSIS_DATE_LONG}**
+
+Your network is currently split **38% Dental** and **62% Animal Health** by daily order volume.
+
+**Dental Segment**
+- Daily orders: **71,000**
+- OTIF: **97.8%** (strong)
+- Cost per order: **$16.20** (higher handling complexity)
+- Next-day coverage: **93%**
+
+**Animal Health Segment**
+- Daily orders: **116,400**
+- OTIF: **96.7%** (1.1pp below Dental)
+- Cost per order: **$13.88** (lower unit cost, higher volume)
+- Next-day coverage: **89%**
+
+**What matters for Patterson right now**
+1. Dental is service-strong but cost-heavy due to SKU complexity and handling profile.
+2. Animal Health drives scale but carries higher carrier sensitivity in Southeast and West lanes.
+3. Closing the OTIF gap in Animal Health by 0.5pp while holding cost flat is the highest-value service target this quarter.
+
+If you want, I can open the exact scenarios to improve each segment independently.`,
+    recommendations: [
+      {
+        title: 'Raise Animal Health OTIF by 0.5pp',
+        detail: 'Prioritize carrier and capacity actions on AH-heavy lanes to close the service gap.',
+        impactUSD: 7_100_000,
+        impactOtifPct: 0.005,
+        timeToValue: '60 days',
+        complexity: 'Medium',
+        priority: 1,
+        scenarioType: 'CarrierShift',
+        affectedFacilities: ['FC-DAL-006', 'FC-OKC-007', 'FC-PHX-011', 'FC-SAC-010'],
+      },
+      {
+        title: 'Lower Dental Cost-to-Serve by 2%',
+        detail: 'Optimize inventory and handling policies in Dental FCs while preserving OTIF.',
+        impactUSD: 5_300_000,
+        timeToValue: '90 days',
+        complexity: 'Low',
+        priority: 2,
+        scenarioType: 'InventoryReposition',
+        affectedFacilities: ['FC-BSM-005', 'FC-GRV-012'],
+      },
+    ],
+    dataSourcesUsed: ['SAP EWM – Segment KPI Feed', 'Cost Analytics', 'Carrier Performance Feed'],
+    confidenceScore: 0.9,
+  },
+  {
     id: 'network-overview',
     triggerKeywords: ['network', 'overview', 'summary', 'status', 'health', 'performance', 'overall', 'how are we doing'],
     promptExamples: [
@@ -302,7 +388,7 @@ Pre-position +5 days dental instrument inventory at Dallas FC before winter seas
       'Identifying top risk indicators from live data feeds...',
       'Benchmarking against healthcare distribution industry standards...',
     ],
-    response: `**Patterson Network Health Snapshot – February 24, 2026**
+    response: `**Patterson Network Health Snapshot – ${ANALYSIS_DATE_LONG}**
 
 Your distribution network is **operationally solid** with three areas warranting near-term attention.
 
@@ -356,5 +442,6 @@ export function matchInsightScript(query: string): AiInsightScript {
     return { script, score };
   });
   scored.sort((a, b) => b.score - a.score);
-  return scored[0].score > 0 ? scored[0].script : AI_INSIGHTS[5]; // fallback to network-overview
+  if (scored[0].score > 0) return scored[0].script;
+  return AI_INSIGHTS.find((script) => script.id === 'network-overview') ?? AI_INSIGHTS[0];
 }

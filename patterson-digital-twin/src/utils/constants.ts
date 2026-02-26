@@ -50,7 +50,7 @@ export const SCENARIO_TYPE_LABELS: Record<string, string> = {
 
 export const DEMO_CREDENTIALS = {
   email: 'demo@patterson.com',
-  password: 'Patterson2024!',
+  password: 'Patterson2026!',
 };
 
 export const KPI_BASELINE = {

@@ -30,7 +30,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       user: null,
       login: (email: string, password: string) => {
-        if (email === 'demo@patterson.com' && password === 'Patterson2024!') {
+        if (email === 'demo@patterson.com' && password === 'Patterson2026!') {
           set({ isAuthenticated: true, user: DEMO_USER });
           return true;
         }

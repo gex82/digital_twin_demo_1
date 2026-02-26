@@ -4,6 +4,7 @@ import { Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { DEMO_CREDENTIALS } from '../utils/constants';
 import { useDemoStageBindings } from '../hooks/useDemoStageBindings';
+import { useScenarioStore } from '../store/scenarioStore';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const scenarioCount = useScenarioStore((state) => state.scenarios.filter((scenario) => !scenario.isBaseline).length);
 
   const performLogin = async (overrideEmail?: string, overridePassword?: string) => {
     const effectiveEmail = overrideEmail ?? email;
@@ -129,7 +131,7 @@ export default function Login() {
               ['13 FCs Modeled', '#006EFF'],
               ['97.2% OTIF', '#00C2A8'],
               ['$847M Network', '#9333ea'],
-              ['8 Scenarios', '#f59e0b'],
+              [`${scenarioCount} Scenarios`, '#f59e0b'],
             ].map(([label, color]) => (
               <div key={label as string} style={{
                 background: `${color as string}15`,
@@ -266,7 +268,7 @@ export default function Login() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
               <span style={{ color: '#64748b' }}>Password:</span>
-              <span style={{ fontFamily: 'monospace', color: '#94a3b8' }}>Patterson2024!</span>
+              <span style={{ fontFamily: 'monospace', color: '#94a3b8' }}>{DEMO_CREDENTIALS.password}</span>
             </div>
           </div>
           <button

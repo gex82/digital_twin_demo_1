@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const DEMO_EMAIL = 'demo@patterson.com';
-const DEMO_PASSWORD = 'Patterson2024!';
+const DEMO_PASSWORD = 'Patterson2026!';
 
 async function login(page: Page): Promise<void> {
   await page.goto('/login');

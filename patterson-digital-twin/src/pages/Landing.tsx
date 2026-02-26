@@ -3,6 +3,7 @@ import { ArrowRight, CheckCircle, BarChart2, Network, Brain, Shield, Zap, Globe,
 import { useDemoStore } from '../store/demoStore';
 import { useDemoStageBindings } from '../hooks/useDemoStageBindings';
 import { useShallow } from 'zustand/react/shallow';
+import { DEMO_CREDENTIALS } from '../utils/constants';
 
 const FEATURES = [
   { icon: Network, title: 'Network Modeling', desc: 'Model FCs, hubs, satellites, cross-docks, and all transportation lanes with real-world constraints and costs.' },
@@ -168,13 +169,13 @@ export default function Landing() {
                 padding: '14px 32px', cursor: 'pointer', fontSize: 15,
               }}
             >
-              View Network Map
+              Sign In to View Network Map
             </button>
           </div>
 
           {/* Demo credentials hint */}
           <p style={{ marginTop: 16, fontSize: 12, color: '#475569' }}>
-            Demo access: <span style={{ color: '#00C2A8', fontFamily: 'monospace' }}>demo@patterson.com</span> · <span style={{ color: '#00C2A8', fontFamily: 'monospace' }}>Patterson2024!</span>
+            Demo access: <span style={{ color: '#00C2A8', fontFamily: 'monospace' }}>{DEMO_CREDENTIALS.email}</span> · <span style={{ color: '#00C2A8', fontFamily: 'monospace' }}>{DEMO_CREDENTIALS.password}</span>
           </p>
         </div>
       </section>
@@ -349,7 +350,7 @@ export default function Landing() {
           Launch Platform Demo <ArrowRight size={20} />
         </button>
         <p style={{ marginTop: 16, fontSize: 12, color: '#475569' }}>
-          demo@patterson.com · Patterson2024!
+          {DEMO_CREDENTIALS.email} · {DEMO_CREDENTIALS.password}
         </p>
       </section>
 

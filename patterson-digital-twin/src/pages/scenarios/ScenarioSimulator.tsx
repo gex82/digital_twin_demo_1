@@ -30,10 +30,13 @@ type FilterTab = typeof FILTER_TABS[number];
 
 const SCENARIO_TYPES: { type: ScenarioType; label: string; desc: string; icon: typeof Building2 }[] = [
   { type: 'FCConsolidation', label: 'FC Consolidation', desc: 'Merge under-utilized FCs to reduce fixed cost', icon: Building2 },
+  { type: 'FCExpansion', label: 'FC Expansion', desc: 'Add or expand FC footprint for coverage and growth', icon: Building2 },
   { type: 'CarrierShift', label: 'Carrier Strategy Shift', desc: 'Reallocate volume across carrier network', icon: TrendingUp },
   { type: 'AutomationROI', label: 'Automation ROI', desc: 'Model GTP, voice pick, or robotics investment', icon: Sliders },
   { type: 'DisruptionResponse', label: 'Disruption Response', desc: 'Simulate weather, strike, or capacity shock', icon: AlertTriangle },
   { type: 'InventoryReposition', label: 'Inventory Reposition', desc: 'Optimize safety stock placement by SKU', icon: BarChart2 },
+  { type: 'HubSatelliteRedesign', label: 'Hub-Satellite Redesign', desc: 'Restructure network topology with hub and satellites', icon: Building2 },
+  { type: 'DemandSurge', label: 'Demand Surge', desc: 'Stress-test network against abrupt volume increases', icon: TrendingUp },
 ];
 
 export default function ScenarioSimulator() {
@@ -922,6 +925,7 @@ function ParameterSliders({ type, params, onChange }: {
     <>
       {recalculationNotice}
       <Slider label="Shift Volume %" paramKey="shiftVolumePct" min={0} max={80} />
+      <Slider label="Rate Reduction %" paramKey="rateReduction" min={0} max={8} step={0.1} />
     </>
   );
   if (type === 'AutomationROI') return (
@@ -942,6 +946,30 @@ function ParameterSliders({ type, params, onChange }: {
     <>
       {recalculationNotice}
       <Slider label="Inventory Reduction %" paramKey="inventoryReductionPct" min={0} max={30} />
+    </>
+  );
+  if (type === 'FCExpansion') return (
+    <>
+      {recalculationNotice}
+      <Slider label="Demand Growth %" paramKey="demandGrowth" min={0} max={20} />
+      <Slider label="CapEx Budget ($M)" paramKey="capexBudget" min={6} max={24} step={0.5} unit="M" />
+      <Slider label="Hub Size (K sqft)" paramKey="hubSqFt" min={30} max={80} step={5} unit="K" />
+    </>
+  );
+  if (type === 'DemandSurge') return (
+    <>
+      {recalculationNotice}
+      <Slider label="Demand Surge %" paramKey="demandSurgePct" min={10} max={50} />
+      <Slider label="Surge Duration (days)" paramKey="surgeDuration" min={30} max={180} unit=" days" />
+      <Slider label="Volume Redirect %" paramKey="volumeRedirectPct" min={0} max={60} />
+    </>
+  );
+  if (type === 'HubSatelliteRedesign') return (
+    <>
+      {recalculationNotice}
+      <Slider label="Satellites per Hub" paramKey="satelliteCount" min={3} max={8} unit="" />
+      <Slider label="Total CapEx ($M)" paramKey="totalCapex" min={8} max={25} step={0.5} unit="M" />
+      <Slider label="Automation Enablement %" paramKey="automationEnablementPct" min={0} max={100} />
     </>
   );
   return null;

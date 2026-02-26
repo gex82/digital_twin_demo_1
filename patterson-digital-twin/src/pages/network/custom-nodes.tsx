@@ -16,21 +16,39 @@ function utilColor(pct: number) {
 
 export function FCNode({ data, selected }: { data: any; selected: boolean }) {
   const color = utilColor(data.utilizationPct ?? 70);
+  const showCoverage = Boolean(data.showCoverage);
+  const coveragePx = typeof data.coveragePx === 'number' ? data.coveragePx : 72;
   return (
     <div style={{
       width: 80, display: 'flex', flexDirection: 'column', alignItems: 'center',
       filter: selected ? `drop-shadow(0 0 8px ${BLUE})` : 'none',
+      position: 'relative',
     }}>
       <Handle type="target" position={Position.Top} style={{ background: BLUE, border: 'none', width: 6, height: 6 }} />
-      <div style={{
-        width: 64, height: 64, borderRadius: '50%',
-        background: SURFACE,
-        border: `2px solid ${selected ? BLUE : BORDER}`,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        boxShadow: selected ? `0 0 16px ${BLUE}40` : 'none',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        {/* Utilization fill at bottom */}
+      <div style={{ width: 80, height: 80, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {showCoverage && (
+          <div
+            data-testid="fc-coverage-visible"
+            style={{
+              position: 'absolute',
+              width: coveragePx * 2,
+              height: coveragePx * 2,
+              borderRadius: '50%',
+              border: `1px dashed ${TEAL}77`,
+              background: 'rgba(0,194,168,0.05)',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+        <div style={{
+          width: 64, height: 64, borderRadius: '50%',
+          background: SURFACE,
+          border: `2px solid ${selected ? BLUE : BORDER}`,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          boxShadow: selected ? `0 0 16px ${BLUE}40` : 'none',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          {/* Utilization fill at bottom */}
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           height: `${(data.utilizationPct ?? 70) * 0.64}%`,
@@ -38,6 +56,7 @@ export function FCNode({ data, selected }: { data: any; selected: boolean }) {
         }} />
         <span style={{ color: '#e2e8f0', fontSize: 11, fontWeight: 700, zIndex: 1 }}>{data.shortName}</span>
         <span style={{ color: color, fontSize: 9, zIndex: 1 }}>{data.utilizationPct}%</span>
+        </div>
       </div>
       <span style={{ color: '#94a3b8', fontSize: 9, marginTop: 4, textAlign: 'center', maxWidth: 80 }}>{data.city}</span>
       <Handle type="source" position={Position.Bottom} style={{ background: BLUE, border: 'none', width: 6, height: 6 }} />

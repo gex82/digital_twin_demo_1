@@ -39,6 +39,7 @@ export default function Dashboard() {
   const { scenarios } = useScenarioStore();
   const {
     maskSensitiveCosts,
+    lastModelCalibratedAt,
     integrationSources,
     integrationIncidents,
     isIntegrationRefreshing,
@@ -49,6 +50,7 @@ export default function Dashboard() {
   } = useUiStore(
     useShallow((state) => ({
       maskSensitiveCosts: state.maskSensitiveCosts,
+      lastModelCalibratedAt: state.lastModelCalibratedAt,
       integrationSources: state.integrationSources,
       integrationIncidents: state.integrationIncidents,
       isIntegrationRefreshing: state.isIntegrationRefreshing,
@@ -71,6 +73,20 @@ export default function Dashboard() {
   const averageLatencyMs = Math.round(
     integrationSources.reduce((sum, source) => sum + source.latencyMs, 0) / integrationSources.length
   );
+  const modelCalibratedLabel = useMemo(() => {
+    const date = new Date(lastModelCalibratedAt);
+    if (Number.isNaN(date.getTime())) return 'Unavailable';
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'America/Chicago',
+      timeZoneName: 'short',
+    }).format(date);
+  }, [lastModelCalibratedAt]);
 
   useDemoStageBindings('/app/dashboard', useMemo(() => ({
     DASHBOARD_FOCUS_HEALTH: async () => {
@@ -306,6 +322,9 @@ export default function Dashboard() {
         {topKpis.map((kpi, i) => (
           <KpiCard key={kpi.id} kpi={kpi} delay={i * 100} />
         ))}
+      </div>
+      <div style={{ marginTop: -10, color: '#64748b', fontSize: 11 }}>
+        Data as of: Model calibrated {modelCalibratedLabel}
       </div>
 
       {/* Network map + alerts */}
