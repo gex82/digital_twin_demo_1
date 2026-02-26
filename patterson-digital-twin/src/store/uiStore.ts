@@ -66,6 +66,8 @@ export interface UiStoreSnapshot {
   unreadNotifications: number;
   roleLens: RoleLens;
   maskSensitiveCosts: boolean;
+  commandCenterMode: boolean;
+  lastModelCalibratedAt: string;
   integrationSources: IntegrationSourceStatus[];
   integrationIncidents: IntegrationIncident[];
   integrationRefreshCounter: number;
@@ -81,6 +83,8 @@ interface UiState {
   unreadNotifications: number;
   roleLens: RoleLens;
   maskSensitiveCosts: boolean;
+  commandCenterMode: boolean;
+  lastModelCalibratedAt: string;
   integrationSources: IntegrationSourceStatus[];
   integrationIncidents: IntegrationIncident[];
   integrationRefreshCounter: number;
@@ -97,6 +101,7 @@ interface UiState {
   markNotificationsRead: () => void;
   setRoleLens: (role: RoleLens) => void;
   setMaskSensitiveCosts: (masked: boolean) => void;
+  setCommandCenterMode: (enabled: boolean) => void;
   simulateIntegrationRefresh: () => void;
   acknowledgeIncident: (id: string) => void;
   initializeDecisionWorkflow: (scenarioId: string | null, scenarioName: string) => void;
@@ -156,6 +161,8 @@ function pushToastWithLimit(toasts: AppToast[], toast: AppToast): AppToast[] {
   return [...toasts.slice(-4), toast];
 }
 
+const INITIAL_MODEL_CALIBRATED_AT = '2026-02-24T14:42:00.000Z';
+
 function initialDecisionWorkflow(): DecisionWorkflowState {
   return {
     scenarioId: null,
@@ -186,6 +193,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   unreadNotifications: 4,
   roleLens: 'Mixed',
   maskSensitiveCosts: false,
+  commandCenterMode: false,
+  lastModelCalibratedAt: INITIAL_MODEL_CALIBRATED_AT,
   integrationSources: deepClone(INITIAL_SOURCES),
   integrationIncidents: deepClone(INITIAL_INCIDENTS),
   integrationRefreshCounter: 0,
@@ -209,6 +218,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   setRoleLens: (role) => set({ roleLens: role }),
 
   setMaskSensitiveCosts: (masked) => set({ maskSensitiveCosts: masked }),
+
+  setCommandCenterMode: (enabled) => set({ commandCenterMode: enabled }),
 
   simulateIntegrationRefresh: () => {
     const now = new Date().toISOString();
@@ -279,6 +290,7 @@ export const useUiStore = create<UiState>((set, get) => ({
           integrationSources: nextSources,
           integrationIncidents: nextIncidents.slice(0, 8),
           isIntegrationRefreshing: false,
+          lastModelCalibratedAt: now,
           toasts: pushToastWithLimit(state.toasts, refreshToast),
         };
       });
@@ -379,6 +391,8 @@ export const useUiStore = create<UiState>((set, get) => ({
       unreadNotifications: 4,
       roleLens: 'Mixed',
       maskSensitiveCosts: false,
+      commandCenterMode: false,
+      lastModelCalibratedAt: INITIAL_MODEL_CALIBRATED_AT,
       integrationSources: deepClone(INITIAL_SOURCES),
       integrationIncidents: deepClone(INITIAL_INCIDENTS),
       integrationRefreshCounter: 0,
@@ -399,6 +413,8 @@ export const useUiStore = create<UiState>((set, get) => ({
       unreadNotifications: state.unreadNotifications,
       roleLens: state.roleLens,
       maskSensitiveCosts: state.maskSensitiveCosts,
+      commandCenterMode: state.commandCenterMode,
+      lastModelCalibratedAt: state.lastModelCalibratedAt,
       integrationSources: deepClone(state.integrationSources),
       integrationIncidents: deepClone(state.integrationIncidents),
       integrationRefreshCounter: state.integrationRefreshCounter,
@@ -416,6 +432,8 @@ export const useUiStore = create<UiState>((set, get) => ({
       unreadNotifications: snapshot.unreadNotifications,
       roleLens: snapshot.roleLens,
       maskSensitiveCosts: snapshot.maskSensitiveCosts,
+      commandCenterMode: snapshot.commandCenterMode,
+      lastModelCalibratedAt: snapshot.lastModelCalibratedAt,
       integrationSources: deepClone(snapshot.integrationSources),
       integrationIncidents: deepClone(snapshot.integrationIncidents),
       integrationRefreshCounter: snapshot.integrationRefreshCounter,

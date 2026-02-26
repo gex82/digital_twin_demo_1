@@ -129,3 +129,60 @@
 .recharts-tooltip-wrapper { outline: none !important; }
 .recharts-cartesian-grid-horizontal line, .recharts-cartesian-grid-vertical line { stroke: #2e4168 !important; }
 .recharts-text { fill: #94a3b8 !important; font-size: 12px !important; }
+
+/* Command center visual mode */
+body.command-center-mode {
+  background:
+    radial-gradient(circle at 18% 14%, rgba(0, 194, 168, 0.18), transparent 38%),
+    radial-gradient(circle at 84% 12%, rgba(0, 110, 255, 0.15), transparent 42%),
+    #061122;
+}
+body.command-center-mode .leaflet-tile-pane {
+  filter: brightness(0.74) saturate(1.05) hue-rotate(-6deg);
+}
+body.command-center-mode .react-flow__background {
+  background: #071425 !important;
+}
+body.command-center-mode .react-flow__edge-path {
+  stroke-opacity: 0.78;
+}
+
+/* Live lane and node animation for map views */
+.leaflet-interactive.lane-flow {
+  animation: lane-shift 4.8s linear infinite;
+}
+.leaflet-interactive.lane-mode-parcel { stroke-dasharray: 10 8; }
+.leaflet-interactive.lane-mode-ltl { stroke-dasharray: 6 7; }
+.leaflet-interactive.lane-mode-selffleet { stroke-dasharray: 2 8; }
+.leaflet-interactive.fc-live-pulse {
+  animation: node-pulse 2.6s ease-out infinite;
+  stroke-opacity: 0.8;
+  fill-opacity: 0;
+}
+
+@keyframes lane-shift {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -60; }
+}
+
+@keyframes node-pulse {
+  0% { stroke-width: 1; opacity: 0.65; }
+  50% { stroke-width: 3.2; opacity: 0.25; }
+  100% { stroke-width: 1; opacity: 0.65; }
+}
+
+*:focus-visible {
+  outline: 2px solid rgba(208, 100, 20, 0.9);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leaflet-interactive.lane-flow,
+  .leaflet-interactive.fc-live-pulse,
+  .fc-pulse-ring,
+  .typing-cursor::after,
+  .animate-fade-in-up,
+  .skeleton {
+    animation: none !important;
+  }
+}

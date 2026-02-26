@@ -856,7 +856,43 @@ function ParameterSliders({ type, params, onChange }: {
   params: Record<string, number | string>;
   onChange: (p: Record<string, number | string>) => void;
 }) {
-  const update = (key: string, val: number | string) => onChange({ ...params, [key]: val });
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const recalcTimer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (recalcTimer.current != null) {
+      window.clearTimeout(recalcTimer.current);
+    }
+  }, []);
+
+  const update = (key: string, val: number | string) => {
+    onChange({ ...params, [key]: val });
+    setIsRecalculating(true);
+    if (recalcTimer.current != null) {
+      window.clearTimeout(recalcTimer.current);
+    }
+    recalcTimer.current = window.setTimeout(() => {
+      setIsRecalculating(false);
+      recalcTimer.current = null;
+    }, 520);
+  };
+
+  const recalculationNotice = (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 12,
+        fontSize: 11,
+        color: isRecalculating ? '#00C2A8' : '#64748b',
+        transition: 'color 0.2s ease',
+      }}
+    >
+      <Clock size={12} />
+      {isRecalculating ? 'Recalculating scenario sensitivity...' : 'Adjust sliders to preview sensitivity impact.'}
+    </div>
+  );
 
   const Slider = ({ label, paramKey, min, max, step = 1, unit = '%' }: {
     label: string; paramKey: string; min: number; max: number; step?: number; unit?: string;
@@ -877,29 +913,34 @@ function ParameterSliders({ type, params, onChange }: {
 
   if (type === 'FCConsolidation') return (
     <>
+      {recalculationNotice}
       <Slider label="Volume Redirect %" paramKey="volumeRedirectPct" min={0} max={100} />
       <Slider label="Labor Savings %" paramKey="laborSavingsPct" min={0} max={50} />
     </>
   );
   if (type === 'CarrierShift') return (
     <>
+      {recalculationNotice}
       <Slider label="Shift Volume %" paramKey="shiftVolumePct" min={0} max={80} />
     </>
   );
   if (type === 'AutomationROI') return (
     <>
+      {recalculationNotice}
       <Slider label="CapEx ($M)" paramKey="capexMillions" min={0} max={10} step={0.5} unit="M" />
       <Slider label="Labor Reduction %" paramKey="laborReductionPct" min={0} max={60} />
     </>
   );
   if (type === 'DisruptionResponse') return (
     <>
+      {recalculationNotice}
       <Slider label="Affected FC Count" paramKey="affectedFCCount" min={1} max={4} unit="" />
       <Slider label="Disruption Duration (days)" paramKey="durationDays" min={1} max={30} unit=" days" />
     </>
   );
   if (type === 'InventoryReposition') return (
     <>
+      {recalculationNotice}
       <Slider label="Inventory Reduction %" paramKey="inventoryReductionPct" min={0} max={30} />
     </>
   );

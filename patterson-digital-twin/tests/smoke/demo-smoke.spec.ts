@@ -59,6 +59,26 @@ test('authenticated route smoke across all primary pages', async ({ page }) => {
   expect(runtimeErrors).toEqual([]);
 });
 
+test('top bar command-center toggle and calibration pill render correctly', async ({ page }) => {
+  await login(page);
+  await expect(page.getByTestId('model-calibration-pill')).toContainText('Model Calibrated:');
+  await expect(page.getByTestId('command-center-toggle')).toBeVisible();
+
+  await expect
+    .poll(async () => page.evaluate(() => document.body.classList.contains('command-center-mode')))
+    .toBe(false);
+
+  await page.getByTestId('command-center-toggle').click();
+  await expect
+    .poll(async () => page.evaluate(() => document.body.classList.contains('command-center-mode')))
+    .toBe(true);
+
+  await page.getByTestId('command-center-toggle').click();
+  await expect
+    .poll(async () => page.evaluate(() => document.body.classList.contains('command-center-mode')))
+    .toBe(false);
+});
+
 test('guided start demo flow advances through all 11 stages', async ({ page }) => {
   await page.goto('/');
   await page.locator('[data-demo-anchor="demo-landing-start"]').first().click();

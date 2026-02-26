@@ -5,12 +5,30 @@ import { useDemoStore } from '../../store/demoStore';
 import { useShallow } from 'zustand/react/shallow';
 
 const HIGHLIGHT = '#00C2A8';
+const BUBBLE_EXPANDED_WIDTH = 380;
+const BUBBLE_EXPANDED_HEIGHT = 240;
+const BUBBLE_MINIMIZED_WIDTH = 270;
+const BUBBLE_MINIMIZED_HEIGHT = 74;
 
 function findAnchorRect(anchorId?: string): DOMRect | null {
   if (!anchorId) return null;
   const element = document.querySelector(`[data-demo-anchor="${anchorId}"]`) as HTMLElement | null;
   if (!element) return null;
   return element.getBoundingClientRect();
+}
+
+function clampBubblePosition(
+  position: { x: number; y: number },
+  minimized: boolean
+): { x: number; y: number } {
+  const width = minimized ? BUBBLE_MINIMIZED_WIDTH : BUBBLE_EXPANDED_WIDTH;
+  const height = minimized ? BUBBLE_MINIMIZED_HEIGHT : BUBBLE_EXPANDED_HEIGHT;
+  const maxX = Math.max(16, window.innerWidth - width - 16);
+  const maxY = Math.max(16, window.innerHeight - height - 16);
+  return {
+    x: Math.min(Math.max(16, position.x), maxX),
+    y: Math.min(Math.max(16, position.y), maxY),
+  };
 }
 
 export function DemoOverlay() {
@@ -139,15 +157,39 @@ export function DemoOverlay() {
       return;
     }
     let frame = 0;
-    const tick = () => {
+    const refresh = () => {
+      frame = 0;
       setAnchorRect(findAnchorRect(currentStage.anchorId));
-      frame = window.requestAnimationFrame(tick);
     };
-    frame = window.requestAnimationFrame(tick);
+    const schedule = () => {
+      if (frame !== 0) return;
+      frame = window.requestAnimationFrame(refresh);
+    };
+
+    schedule();
+    window.addEventListener('resize', schedule);
+    window.addEventListener('scroll', schedule, true);
+    const interval = window.setInterval(schedule, 450);
+
     return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('resize', schedule);
+      window.removeEventListener('scroll', schedule, true);
       window.cancelAnimationFrame(frame);
     };
   }, [currentStage, isActive, location.pathname]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    const onResize = () => {
+      const clamped = clampBubblePosition(bubblePosition, isBubbleMinimized);
+      if (clamped.x !== bubblePosition.x || clamped.y !== bubblePosition.y) {
+        setBubblePosition(clamped, bubblePinnedByUser);
+      }
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [bubblePinnedByUser, bubblePosition, isActive, isBubbleMinimized, setBubblePosition]);
 
   const canBack = currentStageIndex > 0;
   const canNext = currentStageIndex < stages.length - 1 || runState !== 'completed';
@@ -237,7 +279,11 @@ export function DemoOverlay() {
           onResetPosition={resetBubblePosition}
           onToggleMinimized={() => setBubbleMinimized(!isBubbleMinimized)}
           onDockLeft={() => setBubblePosition({ x: 18, y: bubblePosition.y }, true)}
-          onDockRight={() => setBubblePosition({ x: Math.max(18, window.innerWidth - 398), y: bubblePosition.y }, true)}
+          onDockRight={() => {
+            const width = isBubbleMinimized ? BUBBLE_MINIMIZED_WIDTH : BUBBLE_EXPANDED_WIDTH;
+            const clamped = clampBubblePosition({ x: window.innerWidth - width - 18, y: bubblePosition.y }, isBubbleMinimized);
+            setBubblePosition(clamped, true);
+          }}
           onJumpToStage={(stageId) => goToStage(stageId)}
           onPositionChange={setBubblePosition}
         />

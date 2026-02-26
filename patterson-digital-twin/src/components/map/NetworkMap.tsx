@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Polyline, Popup, Circle, ZoomControl } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { PRIMARY_FACILITIES, REGIONAL_HUBS } from '../../data/facilities';
 import type { Facility } from '../../types';
+import { useUiStore } from '../../store/uiStore';
 
 interface NetworkMapProps {
   height?: number | string;
@@ -49,15 +50,23 @@ function getRadius(facility: Facility): number {
 export function NetworkMap({ height = 500, showCoverage = false, showFlows = true, selectedFacilityId, onFacilityClick }: NetworkMapProps) {
   const [mounted, setMounted] = useState(false);
   const [visibleFCs, setVisibleFCs] = useState<string[]>([]);
+  const commandCenterMode = useUiStore((state) => state.commandCenterMode);
 
   useEffect(() => {
     setMounted(true);
+    const timers: number[] = [];
     // Staggered animation for FC markers appearing
     PRIMARY_FACILITIES.forEach((fc, i) => {
-      setTimeout(() => {
+      const timer = window.setTimeout(() => {
         setVisibleFCs(prev => [...prev, fc.id]);
       }, i * 120 + 200);
+      timers.push(timer);
     });
+    return () => {
+      for (const timer of timers) {
+        window.clearTimeout(timer);
+      }
+    };
   }, []);
 
   if (!mounted) return <div style={{ height, background: '#0A1628', borderRadius: 12 }} />;
@@ -98,6 +107,7 @@ export function NetworkMap({ height = 500, showCoverage = false, showFlows = tru
         const fromFc = allFacilities.find(f => f.id === lane.from);
         const toFc = allFacilities.find(f => f.id === lane.to);
         if (!fromFc || !toFc) return null;
+        const laneModeClass = `lane-mode-${lane.mode.toLowerCase().replace(/\s+/g, '')}`;
         return (
           <Polyline
             key={`${lane.from}-${lane.to}`}
@@ -106,7 +116,7 @@ export function NetworkMap({ height = 500, showCoverage = false, showFlows = tru
               color: MODE_COLORS[lane.mode] || '#2e4168',
               weight: Math.max(1.5, lane.volume / 120),
               opacity: 0.5,
-              dashArray: lane.mode === 'LTL' ? '6 4' : undefined,
+              className: `${commandCenterMode ? 'lane-flow ' : ''}${laneModeClass}`.trim(),
             }}
           />
         );
@@ -117,42 +127,60 @@ export function NetworkMap({ height = 500, showCoverage = false, showFlows = tru
         const isVisible = visibleFCs.includes(fc.id);
         const isSelected = selectedFacilityId === fc.id;
         const color = SEGMENT_COLORS[fc.segment];
+        const utilizationRatio = fc.currentDailyOrders / Math.max(fc.dailyOrderCapacity, 1);
         return (
-          <CircleMarker
-            key={fc.id}
-            center={fc.coordinates}
-            radius={isVisible ? (isSelected ? getRadius(fc) + 4 : getRadius(fc)) : 0}
-            pathOptions={{
-              color: isSelected ? '#ffffff' : color,
-              fillColor: color,
-              fillOpacity: isVisible ? 0.9 : 0,
-              weight: isSelected ? 3 : 2,
-              opacity: isVisible ? 1 : 0,
-            }}
-            eventHandlers={{ click: () => onFacilityClick?.(fc) }}
-          >
-            <Popup>
-              <div style={{ minWidth: 200 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{fc.name}</div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>{fc.type} · {fc.segment} · {fc.ownership}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
-                  {[
-                    ['Utilization', `${(fc.utilizationPct * 100).toFixed(0)}%`],
-                    ['Daily Orders', `${(fc.currentDailyOrders / 1000).toFixed(1)}K`],
-                    ['OTIF', `${(fc.otifPct * 100).toFixed(1)}%`],
-                    ['SKUs', `${(fc.skuCount / 1000).toFixed(0)}K`],
-                    ['Sq Ft', `${(fc.squareFootage / 1000).toFixed(0)}K`],
-                    ['Employees', `${fc.employeeCount}`],
-                  ].map(([k, v]) => (
-                    <div key={k}>
-                      <span style={{ fontSize: 9, color: '#64748b', display: 'block' }}>{k}</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>{v}</span>
-                    </div>
-                  ))}
+          <Fragment key={fc.id}>
+            {commandCenterMode && isVisible && utilizationRatio >= 0.75 && (
+              <CircleMarker
+                key={`${fc.id}-pulse`}
+                center={fc.coordinates}
+                radius={getRadius(fc) + 7}
+                pathOptions={{
+                  color,
+                  opacity: 0.6,
+                  weight: 1,
+                  fillOpacity: 0,
+                  className: 'fc-live-pulse',
+                }}
+                interactive={false}
+              />
+            )}
+            <CircleMarker
+              key={fc.id}
+              center={fc.coordinates}
+              radius={isVisible ? (isSelected ? getRadius(fc) + 4 : getRadius(fc)) : 0}
+              pathOptions={{
+                color: isSelected ? '#ffffff' : color,
+                fillColor: color,
+                fillOpacity: isVisible ? 0.9 : 0,
+                weight: isSelected ? 3 : 2,
+                opacity: isVisible ? 1 : 0,
+              }}
+              eventHandlers={{ click: () => onFacilityClick?.(fc) }}
+            >
+              <Popup>
+                <div style={{ minWidth: 200 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{fc.name}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>{fc.type} · {fc.segment} · {fc.ownership}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
+                    {[
+                      ['Utilization', `${(fc.utilizationPct * 100).toFixed(0)}%`],
+                      ['Daily Orders', `${(fc.currentDailyOrders / 1000).toFixed(1)}K`],
+                      ['OTIF', `${(fc.otifPct * 100).toFixed(1)}%`],
+                      ['SKUs', `${(fc.skuCount / 1000).toFixed(0)}K`],
+                      ['Sq Ft', `${(fc.squareFootage / 1000).toFixed(0)}K`],
+                      ['Employees', `${fc.employeeCount}`],
+                    ].map(([k, v]) => (
+                      <div key={k}>
+                        <span style={{ fontSize: 9, color: '#64748b', display: 'block' }}>{k}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </Popup>
-          </CircleMarker>
+              </Popup>
+            </CircleMarker>
+          </Fragment>
         );
       })}
 

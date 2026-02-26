@@ -1,4 +1,4 @@
-import { Bell, Search, ChevronDown } from 'lucide-react';
+import { Bell, Search, ChevronDown, Monitor } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useUiStore } from '../../store/uiStore';
 import { NETWORK_ALERTS } from '../../data/alerts';
@@ -20,6 +20,9 @@ export function TopBar({ title, subtitle }: TopBarProps) {
     setRoleLens,
     maskSensitiveCosts,
     setMaskSensitiveCosts,
+    commandCenterMode,
+    setCommandCenterMode,
+    lastModelCalibratedAt,
     integrationSources,
   } = useUiStore();
   const {
@@ -41,6 +44,7 @@ export function TopBar({ title, subtitle }: TopBarProps) {
   );
   const criticalAlerts = NETWORK_ALERTS.filter(a => !a.isRead && a.severity === 'critical').length;
   const healthyConnectors = integrationSources.filter((source) => source.status === 'Healthy').length;
+  const modelCalibrationLabel = formatModelCalibrated(lastModelCalibratedAt);
 
   const demoButtonLabel = !isDemoActive
     ? (demoRunState === 'paused' ? 'Resume Demo' : 'Start Demo')
@@ -146,6 +150,28 @@ export function TopBar({ title, subtitle }: TopBarProps) {
         {maskSensitiveCosts ? 'Masked' : 'Unmasked'}
       </button>
 
+      {/* Command center mode */}
+      <button
+        data-testid="command-center-toggle"
+        onClick={() => setCommandCenterMode(!commandCenterMode)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          background: commandCenterMode ? 'rgba(0,194,168,0.16)' : '#1a2840',
+          border: `1px solid ${commandCenterMode ? 'rgba(0,194,168,0.35)' : '#2e4168'}`,
+          borderRadius: 8,
+          padding: '6px 10px',
+          cursor: 'pointer',
+          color: commandCenterMode ? '#5eead4' : '#94a3b8',
+          fontSize: 11,
+          fontWeight: 600,
+        }}
+      >
+        <Monitor size={12} />
+        {commandCenterMode ? 'Command On' : 'Command Off'}
+      </button>
+
       {/* Integration status */}
       <div style={{ background: '#1a2840', border: '1px solid #2e4168', borderRadius: 8, padding: '6px 10px' }}>
         <span style={{ fontSize: 11, color: '#64748b' }}>Connectors </span>
@@ -196,10 +222,12 @@ export function TopBar({ title, subtitle }: TopBarProps) {
         background: 'rgba(0, 194, 168, 0.1)',
         border: '1px solid rgba(0, 194, 168, 0.2)',
         borderRadius: 20, padding: '4px 10px',
-      }}>
+      }}
+      data-testid="model-calibration-pill"
+      >
         <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00C2A8', animation: 'pulse 2s infinite' }} />
         <span style={{ fontSize: 11, color: '#00C2A8', fontWeight: 600 }}>LIVE</span>
-        <span style={{ fontSize: 11, color: '#64748b' }}>Feb 24, 2026 · 09:42 EST</span>
+        <span style={{ fontSize: 11, color: '#64748b' }}>Model Calibrated: {modelCalibrationLabel}</span>
       </div>
 
       {/* Search */}
@@ -249,4 +277,19 @@ export function TopBar({ title, subtitle }: TopBarProps) {
       </div>
     </header>
   );
+}
+
+function formatModelCalibrated(timestamp: string): string {
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) return 'Unavailable';
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'America/Chicago',
+    timeZoneName: 'short',
+  }).format(parsed);
 }

@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { useAuthStore } from '../../store/authStore';
+import { useUiStore } from '../../store/uiStore';
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/app/dashboard': { title: 'Network Operations Intelligence', subtitle: 'Live snapshot — Feb 24, 2026 | 13 FCs · 187,400 daily orders' },
@@ -16,11 +18,19 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
 
 export function AppShell() {
   const { isAuthenticated } = useAuthStore();
+  const commandCenterMode = useUiStore((state) => state.commandCenterMode);
   const location = useLocation();
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   const meta = PAGE_META[location.pathname] || { title: 'Patterson Network Intelligence', subtitle: '' };
+
+  useEffect(() => {
+    document.body.classList.toggle('command-center-mode', commandCenterMode);
+    return () => {
+      document.body.classList.remove('command-center-mode');
+    };
+  }, [commandCenterMode]);
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--surface-canvas)' }}>

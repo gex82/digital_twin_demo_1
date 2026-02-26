@@ -4,12 +4,22 @@ import { useUiStore } from '../../store/uiStore';
 
 const BUBBLE_WIDTH = 380;
 const BUBBLE_MIN_HEIGHT = 240;
+const BUBBLE_MINIMIZED_WIDTH = 270;
 const BORDER = '#2e4168';
 const BLUE = '#006EFF';
 const TEAL = '#00C2A8';
 
+function getExpandedBubbleWidth(): number {
+  return Math.min(BUBBLE_WIDTH, Math.max(280, window.innerWidth - 24));
+}
+
+function getMinimizedBubbleWidth(): number {
+  return Math.min(BUBBLE_MINIMIZED_WIDTH, Math.max(220, window.innerWidth - 24));
+}
+
 function clampPosition(position: DemoBubblePosition): DemoBubblePosition {
-  const maxX = Math.max(16, window.innerWidth - BUBBLE_WIDTH - 16);
+  const bubbleWidth = getExpandedBubbleWidth();
+  const maxX = Math.max(16, window.innerWidth - bubbleWidth - 16);
   const maxY = Math.max(16, window.innerHeight - BUBBLE_MIN_HEIGHT - 16);
   return {
     x: Math.min(Math.max(16, position.x), maxX),
@@ -83,6 +93,8 @@ export function DemoBubble({
   const roleLens = useUiStore((state) => state.roleLens);
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef<DemoBubblePosition>({ x: 0, y: 0 });
+  const bubbleWidth = getExpandedBubbleWidth();
+  const minimizedWidth = getMinimizedBubbleWidth();
 
   const copy = stage.personaCopy?.[roleLens] ?? stage.personaCopy?.Mixed ?? { summary: stage.summary, detail: stage.detail };
 
@@ -124,7 +136,7 @@ export function DemoBubble({
           position: 'fixed',
           left: position.x,
           top: position.y,
-          width: 270,
+          width: minimizedWidth,
           zIndex: 1300,
           background: 'rgba(13, 30, 53, 0.95)',
           border: `1px solid ${BORDER}`,
@@ -143,6 +155,7 @@ export function DemoBubble({
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
+              aria-label="Back stage"
               onClick={onBack}
               disabled={!canBack || isActionRunning}
               style={{ border: `1px solid ${BORDER}`, background: 'transparent', color: '#94a3b8', borderRadius: 6, padding: '3px 7px', fontSize: 10, cursor: 'pointer' }}
@@ -150,6 +163,7 @@ export function DemoBubble({
               Back
             </button>
             <button
+              aria-label="Next stage"
               onClick={onNext}
               disabled={!canNext || isActionRunning}
               style={{ border: `1px solid ${BLUE}`, background: BLUE, color: '#fff', borderRadius: 6, padding: '3px 7px', fontSize: 10, cursor: 'pointer' }}
@@ -157,6 +171,7 @@ export function DemoBubble({
               Next
             </button>
             <button
+              aria-label="Open demo bubble"
               onClick={onToggleMinimized}
               style={{ border: `1px solid ${BORDER}`, background: 'transparent', color: '#94a3b8', borderRadius: 6, padding: '3px 7px', fontSize: 10, cursor: 'pointer' }}
             >
@@ -175,7 +190,7 @@ export function DemoBubble({
         position: 'fixed',
         left: position.x,
         top: position.y,
-        width: BUBBLE_WIDTH,
+        width: bubbleWidth,
         zIndex: 1300,
         background: 'rgba(13, 30, 53, 0.95)',
         border: `1px solid ${BORDER}`,
@@ -208,24 +223,28 @@ export function DemoBubble({
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button
+            aria-label="Dock bubble left"
             onClick={onDockLeft}
             style={{ border: `1px solid ${BORDER}`, background: 'transparent', borderRadius: 6, color: '#94a3b8', fontSize: 10, cursor: 'pointer', padding: '4px 6px' }}
           >
             Dock L
           </button>
           <button
+            aria-label="Dock bubble right"
             onClick={onDockRight}
             style={{ border: `1px solid ${BORDER}`, background: 'transparent', borderRadius: 6, color: '#94a3b8', fontSize: 10, cursor: 'pointer', padding: '4px 6px' }}
           >
             Dock R
           </button>
           <button
+            aria-label="Reset bubble position"
             onClick={onResetPosition}
             style={{ border: `1px solid ${BORDER}`, background: 'transparent', borderRadius: 6, color: '#94a3b8', fontSize: 10, cursor: 'pointer', padding: '4px 6px' }}
           >
             Reset
           </button>
           <button
+            aria-label="Minimize demo bubble"
             onClick={onToggleMinimized}
             style={{ border: `1px solid ${BORDER}`, background: 'transparent', borderRadius: 6, color: '#94a3b8', fontSize: 10, cursor: 'pointer', padding: '4px 6px' }}
           >
