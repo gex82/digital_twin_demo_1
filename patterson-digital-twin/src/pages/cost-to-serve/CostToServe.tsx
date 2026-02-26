@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { DollarSign, TrendingDown, Zap, ChevronUp, ChevronDown, ArrowRight } from 'lucide-react';
+import { DollarSign, TrendingUp, Zap, ChevronUp, ChevronDown, ArrowRight } from 'lucide-react';
 import { COST_BUCKETS, SEGMENT_COST_SPLITS, TOP_COST_OPPORTUNITIES } from '../../data/costToServe';
 import { CostWaterfallChart } from '../../components/charts/CostWaterfallChart';
 import { GlassCard } from '../../components/ui/GlassCard';
@@ -18,9 +18,9 @@ const GREEN = '#10b981';
 const RED = '#ef4444';
 
 const TOP_KPIS = [
-  { label: 'Total Network Cost', value: '$847.3M', delta: -2.1, unit: 'pct', icon: DollarSign, color: BLUE },
-  { label: 'Cost per Order', value: '$14.82', delta: -1.3, unit: 'pct', icon: TrendingDown, color: TEAL },
-  { label: 'YoY Cost Delta', value: '-2.1%', delta: -2.1, unit: 'pct', icon: TrendingDown, color: GREEN },
+  { label: 'Total Network Cost', value: '$847.3M', delta: 2.3, unit: 'pct', icon: DollarSign, color: BLUE },
+  { label: 'Cost per Order', value: '$14.82', delta: 3.1, unit: 'pct', icon: TrendingUp, color: TEAL },
+  { label: 'YoY Cost Delta', value: '+2.3%', delta: 2.3, unit: 'pct', icon: TrendingUp, color: RED },
   { label: 'Optimization Potential', value: '$31.2M', delta: 0, unit: 'usd', icon: Zap, color: '#f59e0b' },
 ];
 

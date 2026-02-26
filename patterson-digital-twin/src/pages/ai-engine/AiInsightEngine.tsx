@@ -44,14 +44,6 @@ const SUGGESTED_PROMPTS = [
   'Give me a network overview',
 ];
 
-const WELCOME_MSG = {
-  id: 'welcome',
-  role: 'assistant' as const,
-  content: `Welcome to Patterson SupplyIQ — your AI-powered supply chain decision engine.\n\nI have real-time access to your network data across 13 FCs, 187,400 daily orders, and 98,200 active SKUs. Ask me about cost optimization opportunities, scenario analysis, carrier performance, or network resilience.\n\nTry one of the suggested prompts below, or type your own question.`,
-  timestamp: new Date().toISOString(),
-  recommendations: [],
-};
-
 export default function AiInsightEngine() {
   const {
     messages,
@@ -80,7 +72,6 @@ export default function AiInsightEngine() {
   const [thinkingLineIdx, setThinkingLineIdx] = useState(0);
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [displayMessages, setDisplayMessages] = useState(messages.length === 0 ? [WELCOME_MSG] : messages);
   const pushToast = useUiStore((state) => state.pushToast);
 
   useDemoStageBindings('/app/ai', useMemo(() => ({
@@ -106,21 +97,12 @@ export default function AiInsightEngine() {
     },
   }), [createScenarioFromRecommendation, pinInsight, pushToast, sendMessageAsync]));
 
-  // Seed welcome on first load
-  useEffect(() => {
-    if (messages.length === 0) {
-      setDisplayMessages([WELCOME_MSG]);
-    } else {
-      setDisplayMessages(messages);
-    }
-  }, [messages]);
-
   // Scroll to bottom on new message
   useEffect(() => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
     }
-  }, [displayMessages, isThinking, isTyping, typingText]);
+  }, [messages, isThinking, isTyping, typingText]);
 
   // Cycle through thinking lines
   useEffect(() => {
@@ -150,7 +132,7 @@ export default function AiInsightEngine() {
     }
   }
 
-  const msgs = displayMessages.length > 0 ? displayMessages : messages;
+  const msgs = messages;
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden', background: '#0A1628' }}>
@@ -224,7 +206,7 @@ export default function AiInsightEngine() {
         {/* Messages */}
         <div ref={chatRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           {msgs.map(msg => (
-            <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div key={msg.id} data-ai-message-id={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
               <div style={{
                 maxWidth: '85%',
                 background: msg.role === 'user' ? `${BLUE}25` : SURFACE,

@@ -79,6 +79,52 @@ test('top bar command-center toggle and calibration pill render correctly', asyn
     .toBe(false);
 });
 
+test('AI assistant renders a single welcome message without duplicates', async ({ page }) => {
+  await login(page);
+  await page.locator('a[href="/app/ai"]').first().click();
+  await expect(page).toHaveURL(/\/app\/ai$/);
+  await expect(page.locator('[data-ai-message-id="welcome"]')).toHaveCount(1);
+
+  const promptInput = page.getByPlaceholder('Ask SupplyIQ about your network...');
+  await promptInput.fill('Give me a network overview');
+  await promptInput.press('Enter');
+  await expect(page.locator('[data-ai-message-id="welcome"]')).toHaveCount(1);
+});
+
+test('service-level facility sparklines are differentiated per FC', async ({ page }) => {
+  await login(page);
+  await page.locator('a[href="/app/service-level"]').first().click();
+  await expect(page).toHaveURL(/\/app\/service-level$/);
+  await page.getByRole('button', { name: 'By Facility' }).click();
+
+  const points = await page.locator('svg polyline').evaluateAll((nodes) =>
+    nodes.slice(0, 8).map((node) => node.getAttribute('points') ?? '')
+  );
+  const unique = new Set(points.filter((entry) => entry.length > 0));
+  expect(unique.size).toBeGreaterThan(1);
+});
+
+test('sidebar utilities open actionable panels and scenario badge matches list count', async ({ page }) => {
+  await login(page);
+
+  await page.getByTestId('sidebar-utility-settings').click();
+  const panel = page.getByTestId('sidebar-utility-panel');
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText('Settings');
+  await panel.getByRole('button', { name: /Command Center:/ }).click();
+  await expect(panel.getByRole('button', { name: /Command Center:/ })).toBeVisible();
+
+  const badgeText = await page.getByTestId('sidebar-scenarios-badge').innerText();
+  const badgeCount = Number.parseInt(badgeText, 10);
+  await page.locator('a[href="/app/scenarios"]').first().click();
+  await expect(page).toHaveURL(/\/app\/scenarios$/);
+  const scenarioCheckboxes = page.locator('input[type="checkbox"]');
+  await expect(scenarioCheckboxes.first()).toBeVisible();
+  const listCount = await scenarioCheckboxes.count();
+  expect(Number.isNaN(badgeCount)).toBe(false);
+  expect(badgeCount).toBe(listCount);
+});
+
 test('guided start demo flow advances through all 11 stages', async ({ page }) => {
   await page.goto('/');
   await page.locator('[data-demo-anchor="demo-landing-start"]').first().click();

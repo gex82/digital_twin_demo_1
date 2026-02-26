@@ -312,7 +312,7 @@ export const PREBUILT_SCENARIOS: Scenario[] = [
   },
   {
     id: 'SCN-008',
-    name: 'Hub-and-Satellite Redesign – Dental Network',
+    name: 'Hub-and-Satellite Redesign – Multi-Segment Network',
     type: 'HubSatelliteRedesign',
     status: 'Draft',
     createdBy: 'S. Patel',
@@ -320,7 +320,7 @@ export const PREBUILT_SCENARIOS: Scenario[] = [
     version: 1,
     isLocked: false,
     isBaseline: false,
-    description: 'Convert 3 underutilized Dental FCs (BSM, GRV, OKC) to hub-and-satellite model: 1 larger central hub per region + 4-6 satellite FSLs. Projects $9.1M long-term savings.',
+    description: 'Convert 3 underutilized FCs (BSM, GRV, OKC) across Dental and Animal Health segments to a hub-and-satellite model: 1 larger regional hub + 4-6 satellite FSLs. Projects $9.1M long-term savings.',
     assumptionNotes: 'Hub-and-satellite model requires ~$15M total capex across 3 regions. 18-month implementation. Satellite FSLs are 3PL managed. Model assumes no loss of next-day coverage.',
     timeHorizon: '5yr',
     parameters: [
@@ -343,9 +343,9 @@ export const PREBUILT_SCENARIOS: Scenario[] = [
       affectedFacilities: ['FC-BSM-005', 'FC-GRV-012', 'FC-OKC-007'],
       affectedLanes: [],
       riskLevel: 'Medium',
-      executiveSummary: 'Hub-and-satellite redesign for 3 Dental FCs projects $9.1M annual savings after 36-month payback. Next-day coverage improves +2pp through satellite placement. 5yr NPV of $18.7M. High implementation complexity – recommend phased approach starting with BSM hub.',
+      executiveSummary: 'Hub-and-satellite redesign for a mixed-segment set of 3 FCs projects $9.1M annual savings after 36-month payback. Next-day coverage improves +2pp through satellite placement. 5yr NPV of $18.7M. High implementation complexity – recommend phased approach starting with BSM hub.',
     },
-    tags: ['Hub-Satellite', 'Dental', 'Long-Term', 'Medium Risk', 'Strategic'],
+    tags: ['Hub-Satellite', 'Multi-Segment', 'Long-Term', 'Medium Risk', 'Strategic'],
     auditLog: [
       { timestamp: '2026-02-22T11:00:00Z', user: 'S. Patel', action: 'Created', details: 'Strategic initiative from annual network design review' },
     ],

@@ -172,7 +172,7 @@ export const useAiStore = create<AiState>((set, get) => ({
 
   clearConversation: () => {
     set({
-      messages: [],
+      messages: deepClone(INITIAL_MESSAGES),
       isThinking: false,
       isTyping: false,
       typingText: '',

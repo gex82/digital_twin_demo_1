@@ -75,15 +75,15 @@ export default function Reports() {
     'Utilization': '82%',
   };
   const kpiPrior: Record<string, string> = {
-    'Network Cost': '$864.5M',
+    'Network Cost': '$828.2M',
     'OTIF': '96.8%',
-    'Cost/Order': '$15.02',
+    'Cost/Order': '$14.37',
     'Utilization': '77%',
   };
   const topKpis = [
-    { label: 'Network Cost', value: '$847.3M', delta: '-2.0%' },
+    { label: 'Network Cost', value: '$847.3M', delta: '+2.3%' },
     { label: 'OTIF', value: '97.2%', delta: '+0.4pp' },
-    { label: 'Cost/Order', value: '$14.82', delta: '-1.3%' },
+    { label: 'Cost/Order', value: '$14.82', delta: '+3.1%' },
     { label: 'Utilization', value: '78.0%', delta: '+1pp' },
   ];
 
@@ -320,8 +320,8 @@ export default function Reports() {
                     </h2>
                     <p style={{ color: '#334155', fontSize: 13, lineHeight: 1.7, marginBottom: 16 }}>
                       Patterson Companies' distribution network is performing at or above target across key service and cost metrics for the trailing twelve months.
-                      The network OTIF of 97.2% exceeds the 97% target, and cost-per-order has declined 1.3% year-over-year to $14.82 driven by carrier contract improvements
-                      and operational efficiency gains at the Elgin IL facility. Three fulfillment centers (Columbus OH, Harrisburg PA, Phoenix AZ) are above 85% utilization
+                      The network OTIF of 97.2% exceeds the 97% target, while cost-per-order has increased 3.1% year-over-year to $14.82 due to transportation inflation
+                      and rising labor overhead. Three fulfillment centers (Columbus OH, Harrisburg PA, Phoenix AZ) are above 85% utilization
                       and require near-term capacity planning attention heading into peak season.
                     </p>
 
@@ -350,7 +350,7 @@ export default function Reports() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                       <div>
                         <h3 style={{ color: '#0f172a', fontSize: 13, fontWeight: 700, marginBottom: 8 }}>🔴 Top Risk Items</h3>
-                        {['Columbus FC lease expires Oct 2025 — requires consolidation decision', 'FedEx Ground OTIF declining (-1.2pp) — carrier SBR recommended', 'Harrisburg capacity at 87% — seasonal surge risk Q3'].map((item, i) => (
+                        {['Columbus FC lease expires Q3 2026 — decision required by Apr 15, 2026', 'FedEx Ground OTIF declining (-1.2pp) — carrier SBR recommended', 'Harrisburg capacity at 87% — seasonal surge risk Q3'].map((item, i) => (
                           <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
                             <span style={{ color: '#ef4444', fontSize: 11 }}>▶</span>
                             <span style={{ color: '#334155', fontSize: 11, lineHeight: 1.5 }}>{item}</span>

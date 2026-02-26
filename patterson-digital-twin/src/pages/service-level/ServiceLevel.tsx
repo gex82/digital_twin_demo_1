@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { PRIMARY_FACILITIES } from '../../data/facilities';
-import { OTIF_TREND, CARRIER_OTIF } from '../../data/otif';
+import { CARRIER_OTIF } from '../../data/otif';
 import { OtifTrendChart } from '../../components/charts/OtifTrendChart';
 import { NETWORK_ALERTS } from '../../data/alerts';
 import { GlassCard } from '../../components/ui/GlassCard';
@@ -9,6 +9,7 @@ import { useScenarioStore } from '../../store/scenarioStore';
 import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
 import { useShallow } from 'zustand/react/shallow';
 import { useUiStore } from '../../store/uiStore';
+import type { Facility } from '../../types';
 
 const BLUE = '#006EFF';
 const BORDER = '#2e4168';
@@ -62,6 +63,17 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
       <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" />
     </svg>
   );
+}
+
+function buildFacilityOtifSparkline(facility: Facility): number[] {
+  const seed = facility.id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const base = facility.otifPct * 100;
+  const trendBias = facility.utilizationPct >= 0.82 ? -0.14 : facility.utilizationPct <= 0.74 ? 0.11 : -0.03;
+  return Array.from({ length: 6 }, (_, index) => {
+    const seasonal = ((seed * (index + 5)) % 9) - 4;
+    const value = base + (index - 5) * trendBias + seasonal * 0.05;
+    return Number(value.toFixed(2));
+  });
 }
 
 export default function ServiceLevel() {
@@ -180,7 +192,7 @@ export default function ServiceLevel() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {PRIMARY_FACILITIES.map(fc => {
             const color = otifColor(fc.otifPct);
-            const sparkData = OTIF_TREND.slice(-4).map(d => d.otifPct);
+            const sparkData = buildFacilityOtifSparkline(fc);
             return (
               <div key={fc.id} style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
