@@ -152,10 +152,7 @@ export function DemoOverlay() {
   ]);
 
   useEffect(() => {
-    if (!isActive || !currentStage) {
-      setAnchorRect(null);
-      return;
-    }
+    if (!isActive || !currentStage) return;
     let frame = 0;
     const refresh = () => {
       frame = 0;

@@ -15,6 +15,7 @@ import type { Scenario, ScenarioParameter, ScenarioType } from '../../types';
 import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
 import { useUiStore } from '../../store/uiStore';
 import { AppButton } from '../../components/ui/AppButton';
+import { ScenarioParameterSliders } from './ScenarioParameterSliders';
 
 const SURFACE = '#1a2840';
 const SURFACE2 = '#1e2f4a';
@@ -679,7 +680,7 @@ export default function ScenarioSimulator() {
                 <div>
                   <h3 style={{ color: '#e2e8f0', fontSize: 15, marginBottom: 4 }}>Configure Parameters</h3>
                   <p style={{ color: '#64748b', fontSize: 12, marginBottom: 16 }}>Adjust the model inputs for this scenario</p>
-                  <ParameterSliders type={newScenario.type} params={newScenario.params} onChange={params => setNewScenario(s => ({ ...s, params }))} />
+                  <ScenarioParameterSliders type={newScenario.type} params={newScenario.params} onChange={params => setNewScenario(s => ({ ...s, params }))} />
                 </div>
               )}
 
@@ -852,125 +853,4 @@ function ResultKpiCard({ label, value, color, icon: Icon }: {
       <div style={{ color: color, fontSize: 22, fontWeight: 700 }}>{value}</div>
     </div>
   );
-}
-
-function ParameterSliders({ type, params, onChange }: {
-  type: ScenarioType;
-  params: Record<string, number | string>;
-  onChange: (p: Record<string, number | string>) => void;
-}) {
-  const [isRecalculating, setIsRecalculating] = useState(false);
-  const recalcTimer = useRef<number | null>(null);
-
-  useEffect(() => () => {
-    if (recalcTimer.current != null) {
-      window.clearTimeout(recalcTimer.current);
-    }
-  }, []);
-
-  const update = (key: string, val: number | string) => {
-    onChange({ ...params, [key]: val });
-    setIsRecalculating(true);
-    if (recalcTimer.current != null) {
-      window.clearTimeout(recalcTimer.current);
-    }
-    recalcTimer.current = window.setTimeout(() => {
-      setIsRecalculating(false);
-      recalcTimer.current = null;
-    }, 520);
-  };
-
-  const recalculationNotice = (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 12,
-        fontSize: 11,
-        color: isRecalculating ? '#00C2A8' : '#64748b',
-        transition: 'color 0.2s ease',
-      }}
-    >
-      <Clock size={12} />
-      {isRecalculating ? 'Recalculating scenario sensitivity...' : 'Adjust sliders to preview sensitivity impact.'}
-    </div>
-  );
-
-  const Slider = ({ label, paramKey, min, max, step = 1, unit = '%' }: {
-    label: string; paramKey: string; min: number; max: number; step?: number; unit?: string;
-  }) => (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ color: '#94a3b8', fontSize: 12 }}>{label}</span>
-        <span style={{ color: BLUE, fontSize: 12, fontWeight: 600 }}>{params[paramKey] ?? min}{unit}</span>
-      </div>
-      <input
-        type="range" min={min} max={max} step={step}
-        value={(params[paramKey] as number) ?? min}
-        onChange={e => update(paramKey, Number(e.target.value))}
-        style={{ width: '100%', accentColor: BLUE }}
-      />
-    </div>
-  );
-
-  if (type === 'FCConsolidation') return (
-    <>
-      {recalculationNotice}
-      <Slider label="Volume Redirect %" paramKey="volumeRedirectPct" min={0} max={100} />
-      <Slider label="Labor Savings %" paramKey="laborSavingsPct" min={0} max={50} />
-    </>
-  );
-  if (type === 'CarrierShift') return (
-    <>
-      {recalculationNotice}
-      <Slider label="Shift Volume %" paramKey="shiftVolumePct" min={0} max={80} />
-      <Slider label="Rate Reduction %" paramKey="rateReduction" min={0} max={8} step={0.1} />
-    </>
-  );
-  if (type === 'AutomationROI') return (
-    <>
-      {recalculationNotice}
-      <Slider label="CapEx ($M)" paramKey="capexMillions" min={0} max={10} step={0.5} unit="M" />
-      <Slider label="Labor Reduction %" paramKey="laborReductionPct" min={0} max={60} />
-    </>
-  );
-  if (type === 'DisruptionResponse') return (
-    <>
-      {recalculationNotice}
-      <Slider label="Affected FC Count" paramKey="affectedFCCount" min={1} max={4} unit="" />
-      <Slider label="Disruption Duration (days)" paramKey="durationDays" min={1} max={30} unit=" days" />
-    </>
-  );
-  if (type === 'InventoryReposition') return (
-    <>
-      {recalculationNotice}
-      <Slider label="Inventory Reduction %" paramKey="inventoryReductionPct" min={0} max={30} />
-    </>
-  );
-  if (type === 'FCExpansion') return (
-    <>
-      {recalculationNotice}
-      <Slider label="Demand Growth %" paramKey="demandGrowth" min={0} max={20} />
-      <Slider label="CapEx Budget ($M)" paramKey="capexBudget" min={6} max={24} step={0.5} unit="M" />
-      <Slider label="Hub Size (K sqft)" paramKey="hubSqFt" min={30} max={80} step={5} unit="K" />
-    </>
-  );
-  if (type === 'DemandSurge') return (
-    <>
-      {recalculationNotice}
-      <Slider label="Demand Surge %" paramKey="demandSurgePct" min={10} max={50} />
-      <Slider label="Surge Duration (days)" paramKey="surgeDuration" min={30} max={180} unit=" days" />
-      <Slider label="Volume Redirect %" paramKey="volumeRedirectPct" min={0} max={60} />
-    </>
-  );
-  if (type === 'HubSatelliteRedesign') return (
-    <>
-      {recalculationNotice}
-      <Slider label="Satellites per Hub" paramKey="satelliteCount" min={3} max={8} unit="" />
-      <Slider label="Total CapEx ($M)" paramKey="totalCapex" min={8} max={25} step={0.5} unit="M" />
-      <Slider label="Automation Enablement %" paramKey="automationEnablementPct" min={0} max={100} />
-    </>
-  );
-  return null;
 }

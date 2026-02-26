@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Brain, Send, Pin, ChevronRight, Loader2, Database } from 'lucide-react';
 import { useAiStore } from '../../store/aiStore';
 import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
@@ -74,7 +74,7 @@ export default function AiInsightEngine() {
   const inputRef = useRef<HTMLInputElement>(null);
   const pushToast = useUiStore((state) => state.pushToast);
 
-  useDemoStageBindings('/app/ai', useMemo(() => ({
+  useDemoStageBindings('/app/ai', {
     AI_SEND_STAGE_PROMPT: async (action) => {
       const payloadText = typeof action.payload?.text === 'string'
         ? action.payload.text
@@ -95,7 +95,7 @@ export default function AiInsightEngine() {
         tone: 'success',
       });
     },
-  }), [createScenarioFromRecommendation, pinInsight, pushToast, sendMessageAsync]));
+  });
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -106,7 +106,7 @@ export default function AiInsightEngine() {
 
   // Cycle through thinking lines
   useEffect(() => {
-    if (!isThinking) { setThinkingLineIdx(0); return; }
+    if (!isThinking) return;
     const interval = setInterval(() => {
       setThinkingLineIdx(i => (i + 1) % THINKING_LINES.length);
     }, 600);
@@ -116,12 +116,14 @@ export default function AiInsightEngine() {
   function handleSend() {
     const text = input.trim();
     if (!text || isThinking || isTyping) return;
+    setThinkingLineIdx(0);
     setInput('');
     sendMessage(text);
   }
 
   function handlePrompt(p: string) {
     if (isThinking || isTyping) return;
+    setThinkingLineIdx(0);
     sendMessage(p);
   }
 

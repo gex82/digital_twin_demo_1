@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
@@ -16,7 +16,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const scenarioCount = useScenarioStore((state) => state.scenarios.filter((scenario) => !scenario.isBaseline).length);
 
-  const performLogin = async (overrideEmail?: string, overridePassword?: string) => {
+  const performLogin = useCallback(async (overrideEmail?: string, overridePassword?: string) => {
     const effectiveEmail = overrideEmail ?? email;
     const effectivePassword = overridePassword ?? password;
     setError('');
@@ -29,7 +29,7 @@ export default function Login() {
       setError('Invalid credentials. Use the demo credentials below.');
     }
     setLoading(false);
-  };
+  }, [email, login, navigate, password]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +42,7 @@ export default function Login() {
     setError('');
   };
 
-  const demoHandlers = useMemo(() => ({
+  const demoHandlers = {
     LOGIN_FILL_DEMO: async () => {
       setEmail(DEMO_CREDENTIALS.email);
       setPassword(DEMO_CREDENTIALS.password);
@@ -57,7 +57,7 @@ export default function Login() {
       }
       await performLogin();
     },
-  }), [email, password]);
+  };
 
   useDemoStageBindings('/login', demoHandlers);
 

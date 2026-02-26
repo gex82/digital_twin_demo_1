@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { PRIMARY_FACILITIES } from '../../data/facilities';
 import { CARRIER_OTIF } from '../../data/otif';
@@ -95,7 +95,7 @@ export default function ServiceLevel() {
     { label: 'Next-Day Coverage', value: '91%', color: BLUE, delta: '+2pp YoY' },
   ];
 
-  function requestSbr(carrier: string) {
+  const requestSbr = useCallback((carrier: string) => {
     setSbrRequestedCarrier(carrier);
     setSbrMessage(`SBR request submitted for ${carrier}. Procurement and carrier ops notified.`);
     pushToast({
@@ -104,7 +104,7 @@ export default function ServiceLevel() {
       tone: 'warning',
     });
     window.setTimeout(() => setSbrMessage(''), 2600);
-  }
+  }, [pushToast]);
 
   function modelCoverageScenario(region: string) {
     const scenarioId = createScenarioFromTemplate('SCN-002', {
@@ -122,7 +122,7 @@ export default function ServiceLevel() {
     });
   }
 
-  useDemoStageBindings('/app/service-level', useMemo(() => ({
+  useDemoStageBindings('/app/service-level', {
     SERVICE_SHOW_OTIF_RISK: async () => {
       setTab('Carrier Performance');
     },
@@ -130,7 +130,7 @@ export default function ServiceLevel() {
       setTab('Carrier Performance');
       requestSbr('FedEx Ground');
     },
-  }), []));
+  });
 
   return (
     <div style={{ padding: 24, overflowY: 'auto', height: 'calc(100vh - 64px)', boxSizing: 'border-box' }}>

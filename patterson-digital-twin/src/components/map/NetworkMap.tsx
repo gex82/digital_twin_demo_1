@@ -48,12 +48,10 @@ function getRadius(facility: Facility): number {
 }
 
 export function NetworkMap({ height = 500, showCoverage = false, showFlows = true, selectedFacilityId, onFacilityClick }: NetworkMapProps) {
-  const [mounted, setMounted] = useState(false);
   const [visibleFCs, setVisibleFCs] = useState<string[]>([]);
   const commandCenterMode = useUiStore((state) => state.commandCenterMode);
 
   useEffect(() => {
-    setMounted(true);
     const timers: number[] = [];
     // Staggered animation for FC markers appearing
     PRIMARY_FACILITIES.forEach((fc, i) => {
@@ -68,8 +66,6 @@ export function NetworkMap({ height = 500, showCoverage = false, showFlows = tru
       }
     };
   }, []);
-
-  if (!mounted) return <div style={{ height, background: '#0A1628', borderRadius: 12 }} />;
 
   const allFacilities = [...PRIMARY_FACILITIES, ...REGIONAL_HUBS];
 

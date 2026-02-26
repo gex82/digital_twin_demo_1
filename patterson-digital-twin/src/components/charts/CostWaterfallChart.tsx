@@ -10,7 +10,24 @@ const CATEGORY_COLORS: Record<string, string> = {
   Overhead: '#64748b',
 };
 
-const CustomTooltip = ({ active, payload }: any) => {
+interface WaterfallDatum {
+  category: string;
+  subcategory: string;
+  annualCostUSD: number;
+  costPerOrder: number;
+  pctOfTotal: number;
+}
+
+interface WaterfallTooltipPayload {
+  payload: WaterfallDatum;
+}
+
+interface WaterfallTooltipProps {
+  active?: boolean;
+  payload?: WaterfallTooltipPayload[];
+}
+
+const CustomTooltip = ({ active, payload }: WaterfallTooltipProps) => {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
@@ -53,7 +70,7 @@ export function CostWaterfallChart({ height = 320, showTitle = true, compact = f
     };
   });
 
-  const flatData = compact
+  const flatData: WaterfallDatum[] = compact
     ? catData.map(c => ({ subcategory: c.category, category: c.category, annualCostUSD: c.total, costPerOrder: c.total / 68_000_000, pctOfTotal: c.total / 847_300_000 }))
     : COST_BUCKETS.filter(b => b.segment === 'Total').slice(0, 12);
 

@@ -9,12 +9,24 @@ interface Props {
   height?: number;
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface ScenarioTooltipEntry {
+  name: string;
+  color: string;
+  value: string | number;
+}
+
+interface ScenarioTooltipProps {
+  active?: boolean;
+  payload?: ScenarioTooltipEntry[];
+  label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: ScenarioTooltipProps) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: '#1a2840', border: '1px solid #2e4168', borderRadius: 8, padding: '10px 14px' }}>
       <p style={{ margin: 0, fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>{label}</p>
-      {payload.map((p: any) => (
+      {payload.map((p) => (
         <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 3 }}>
           <span style={{ fontSize: 11, color: '#94a3b8' }}>{p.name}:</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: p.color }}>{p.value}</span>

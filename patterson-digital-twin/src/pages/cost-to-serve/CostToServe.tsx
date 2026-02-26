@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { DollarSign, TrendingUp, Zap, ChevronUp, ChevronDown, ArrowRight } from 'lucide-react';
 import { COST_BUCKETS, SEGMENT_COST_SPLITS, TOP_COST_OPPORTUNITIES } from '../../data/costToServe';
 import { CostWaterfallChart } from '../../components/charts/CostWaterfallChart';
@@ -71,7 +71,7 @@ export default function CostToServe() {
     ? (sortDir === 'asc' ? <ChevronUp size={11} style={{ color: BLUE }} /> : <ChevronDown size={11} style={{ color: BLUE }} />)
     : null;
 
-  function modelLaneInScenario(lane: typeof TOP_LANES[0]) {
+  const modelLaneInScenario = useCallback((lane: typeof TOP_LANES[0]) => {
     const scenarioId = createScenarioFromTemplate('SCN-003', {
       name: `Lane Optimization: ${lane.origin.split(' ')[0]} -> ${lane.dest}`,
       description: `Model lane carrier shift for ${lane.origin} to ${lane.dest} (${lane.mode}).`,
@@ -85,9 +85,9 @@ export default function CostToServe() {
       message: `${lane.origin.split(' ')[0]} -> ${lane.dest} optimization moved into Scenario Simulator.`,
       tone: 'info',
     });
-  }
+  }, [createScenarioFromTemplate, pushToast, setActiveScenario]);
 
-  useDemoStageBindings('/app/cost-to-serve', useMemo(() => ({
+  useDemoStageBindings('/app/cost-to-serve', {
     CTS_OPEN_TOP_LANE: async (action) => {
       const laneIndex = typeof action.payload?.laneIndex === 'number' ? action.payload.laneIndex : 0;
       setTab('By Lane');
@@ -100,7 +100,7 @@ export default function CostToServe() {
       }
       modelLaneInScenario(TOP_LANES[0]);
     },
-  }), [laneModalLane]));
+  });
 
   return (
     <div style={{ padding: 24, overflowY: 'auto', height: 'calc(100vh - 64px)', boxSizing: 'border-box' }}>

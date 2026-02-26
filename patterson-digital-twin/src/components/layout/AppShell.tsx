@@ -4,12 +4,9 @@ import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { useAuthStore } from '../../store/authStore';
 import { useUiStore } from '../../store/uiStore';
+import { formatUsDate } from '../../utils/time';
 
-const LIVE_SNAPSHOT_DATE = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: '2-digit',
-  year: 'numeric',
-}).format(new Date());
+const LIVE_SNAPSHOT_DATE = formatUsDate();
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/app/dashboard': { title: 'Network Operations Intelligence', subtitle: `Live snapshot — ${LIVE_SNAPSHOT_DATE} | 13 FCs · 187,400 daily orders` },
@@ -27,16 +24,16 @@ export function AppShell() {
   const commandCenterMode = useUiStore((state) => state.commandCenterMode);
   const location = useLocation();
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-
-  const meta = PAGE_META[location.pathname] || { title: 'Patterson Network Intelligence', subtitle: '' };
-
   useEffect(() => {
     document.body.classList.toggle('command-center-mode', commandCenterMode);
     return () => {
       document.body.classList.remove('command-center-mode');
     };
   }, [commandCenterMode]);
+
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  const meta = PAGE_META[location.pathname] || { title: 'Patterson Network Intelligence', subtitle: '' };
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--surface-canvas)' }}>

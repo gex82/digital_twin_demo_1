@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Download, Share2, Printer, Check } from 'lucide-react';
 import { useScenarioStore } from '../../store/scenarioStore';
 import { NETWORK_KPIS } from '../../data/kpis';
@@ -10,6 +10,7 @@ import { AppButton } from '../../components/ui/AppButton';
 import { SkeletonBlock } from '../../components/ui/SkeletonBlock';
 import { useUiStore } from '../../store/uiStore';
 import { useNavigate } from 'react-router-dom';
+import { buildReportJsonArtifactName, buildScenarioPdfArtifactName } from '../../utils/artifacts';
 
 const BLUE = '#006EFF';
 const TEAL = '#00C2A8';
@@ -87,17 +88,18 @@ export default function Reports() {
     { label: 'Utilization', value: '78.0%', delta: '+1pp' },
   ];
 
-  function selectScenarioPack(scenarioId: string) {
+  const selectScenarioPack = useCallback((scenarioId: string) => {
+    setIsPreviewLoading(true);
     setSelectedScenarioId(scenarioId);
     setSelectedReport('scenario');
     const scenario = scenarios.find((item) => item.id === scenarioId);
     if (scenario) {
       initializeDecisionWorkflow(scenario.id, scenario.name);
     }
-  }
+  }, [initializeDecisionWorkflow, scenarios]);
 
-  function generatePackArtifact(scenarioName: string, scenarioId?: string) {
-    const artifact = `${scenarioName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  const generatePackArtifact = useCallback((scenarioName: string, scenarioId?: string) => {
+    const artifact = buildScenarioPdfArtifactName(scenarioName);
     setArtifactMsg(`Generated pack artifact: ${artifact}`);
     markDecisionExport(artifact);
     if (scenarioId) {
@@ -113,9 +115,9 @@ export default function Reports() {
       tone: 'success',
     });
     window.setTimeout(() => setArtifactMsg(''), 3200);
-  }
+  }, [appendScenarioAuditEntry, markDecisionExport, pushToast]);
 
-  useDemoStageBindings('/app/reports', useMemo(() => ({
+  useDemoStageBindings('/app/reports', {
     REPORT_SELECT_SCENARIO_PACK: async () => {
       const bestScenario = scenarios
         .filter((scenario) => scenario.result)
@@ -131,7 +133,7 @@ export default function Reports() {
       initializeDecisionWorkflow(active.id, active.name);
       generatePackArtifact(active.name, active.id);
     },
-  }), [initializeDecisionWorkflow, scenarios, selectedScenarioId]));
+  });
 
   function downloadJson() {
     const data = activeScenario ?? { kpis: NETWORK_KPIS, generatedAt: new Date().toISOString() };
@@ -139,7 +141,7 @@ export default function Reports() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `patterson-report-${Date.now()}.json`;
+    a.download = buildReportJsonArtifactName();
     a.click();
     URL.revokeObjectURL(url);
     pushToast({ title: 'Export Complete', message: 'Downloaded report data as JSON artifact.', tone: 'info' });
@@ -162,10 +164,10 @@ export default function Reports() {
   }
 
   useEffect(() => {
-    setIsPreviewLoading(true);
+    if (!isPreviewLoading) return;
     const timer = window.setTimeout(() => setIsPreviewLoading(false), 420);
     return () => window.clearTimeout(timer);
-  }, [selectedReport, selectedScenarioId]);
+  }, [isPreviewLoading, selectedReport, selectedScenarioId]);
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden', background: '#0A1628' }}>
@@ -217,7 +219,11 @@ export default function Reports() {
           {STANDARD_REPORTS.map(r => (
             <div
               key={r.id}
-              onClick={() => { setSelectedReport(r.id); setSelectedScenarioId(null); }}
+              onClick={() => {
+                setIsPreviewLoading(true);
+                setSelectedReport(r.id);
+                setSelectedScenarioId(null);
+              }}
               style={{
                 padding: '8px 10px', cursor: 'pointer', borderRadius: 6, marginBottom: 4,
                 background: selectedReport === r.id && !selectedScenarioId ? `${BLUE}15` : SURFACE2,

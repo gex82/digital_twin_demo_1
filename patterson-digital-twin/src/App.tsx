@@ -14,6 +14,7 @@ import Reports from './pages/reports/Reports';
 import DecisionCockpit from './pages/decision-cockpit/DecisionCockpit';
 import { DemoOverlay } from './components/demo/DemoOverlay';
 import { ToastStack } from './components/ui/ToastStack';
+import { GlobalFootnote } from './components/layout/GlobalFootnote';
 
 function AuthGuard({ children }: { children: ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
@@ -47,6 +48,7 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <GlobalFootnote />
       <DemoOverlay />
       <ToastStack />
     </BrowserRouter>

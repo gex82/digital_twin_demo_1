@@ -8,6 +8,7 @@ import { useUiStore, type DecisionApprovalStageId } from '../../store/uiStore';
 import { formatCurrency } from '../../utils/formatters';
 import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
 import { useShallow } from 'zustand/react/shallow';
+import { buildBoardPackArtifactName } from '../../utils/artifacts';
 
 const APPROVER_NAME: Record<DecisionApprovalStageId, string> = {
   analyst: 'A. Kowalski',
@@ -124,7 +125,7 @@ export default function DecisionCockpit() {
 
   function generateBoardPack() {
     if (!activeScenario) return;
-    const artifact = `${activeScenario.name.replace(/\s+/g, '-').toLowerCase()}-board-pack-${new Date().toISOString().slice(0, 10)}.pdf`;
+    const artifact = buildBoardPackArtifactName(activeScenario.name);
     markDecisionExport(artifact);
     appendScenarioAuditEntry(activeScenario.id, {
       user: 'System',

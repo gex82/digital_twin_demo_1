@@ -9,12 +9,24 @@ interface OtifTrendChartProps {
   showTitle?: boolean;
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface OtifTooltipEntry {
+  name: string;
+  color: string;
+  value: number;
+}
+
+interface OtifTooltipProps {
+  active?: boolean;
+  payload?: OtifTooltipEntry[];
+  label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: OtifTooltipProps) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: '#1a2840', border: '1px solid #2e4168', borderRadius: 8, padding: '10px 14px' }}>
       <p style={{ margin: 0, fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>{label}</p>
-      {payload.map((p: any) => (
+      {payload.map((p) => (
         <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, display: 'inline-block' }} />
           <span style={{ fontSize: 12, color: '#cbd5e1' }}>{p.name}:</span>

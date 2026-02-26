@@ -3,12 +3,12 @@ import ReactFlow, {
   Background, Controls, MiniMap,
   addEdge, useNodesState, useEdgesState,
   BackgroundVariant, MarkerType,
-  type Connection, type Edge, type Node,
+  type Connection, type Edge, type Node, type NodeMouseHandler,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Map, LayoutGrid, Layers, Plus, Save, X, Info } from 'lucide-react';
 import { PRIMARY_FACILITIES, REGIONAL_HUBS } from '../../data/facilities';
-import { nodeTypes } from './custom-nodes';
+import { nodeTypes } from './nodeTypes';
 import type { Facility } from '../../types';
 import { useDemoStageBindings } from '../../hooks/useDemoStageBindings';
 import type { DemoActionHandler } from '../../types/demo';
@@ -141,7 +141,7 @@ export default function NetworkBuilder() {
     [setEdges]
   );
 
-  const onNodeClick = useCallback((_: any, node: Node) => {
+  const onNodeClick = useCallback<NodeMouseHandler>((_, node) => {
     setSelectedNode(node);
     setRightPanelOpen(true);
   }, []);
